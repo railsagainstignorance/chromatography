@@ -4,12 +4,35 @@
 <head>
   <meta charset="utf-8">
   <title>Chromatography</title>
+  <style>
+  .blotting-paper {
+    border-width: 1px;
+    border-color: lightgrey;
+    border-style: solid;
+
+    box-shadow: 10px 10px 5px #888888;
+  }
+  </style>
+  <script>
+  </script>
 </head>
 
 <body>
   <h1>Chromatography</h1>
 
-  <img src="assets/splodge.png">
+    <canvas class="blotting-paper" id="myCanvas" width="400" height="400"></canvas>
+
+  <script>
+    var canvas = document.getElementById('myCanvas');
+    var context = canvas.getContext('2d');
+    var imageObj = new Image();
+
+    imageObj.onload = function() {
+      context.drawImage(imageObj, 69, 50);
+    };
+    imageObj.src = 'assets/splodge.png';
+  </script>
+  <!-- <img src="assets/splodge.png"> -->
   <!-- <script src="js/scripts.js"></script> -->
 </body>
 </html>
