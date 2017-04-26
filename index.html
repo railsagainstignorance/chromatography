@@ -14,6 +14,21 @@
   }
   </style>
   <script>
+  var Chroma = (function(){
+    function createPaper(canvasId){
+        function addSolvent() {
+          console.log(`addSolvent to ${canvasId}`);
+        }
+
+        return {
+          run: addSolvent
+        }
+    }
+
+    return {
+      create: createPaper
+    }
+  })();
   </script>
 </head>
 
@@ -29,10 +44,10 @@
 
     imageObj.onload = function() {
       context.drawImage(imageObj, 69, 50);
+      var paper = Chroma.create(myCanvas);
+      paper.run();
     };
     imageObj.src = 'assets/splodge.png';
   </script>
-  <!-- <img src="assets/splodge.png"> -->
-  <!-- <script src="js/scripts.js"></script> -->
 </body>
 </html>
