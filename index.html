@@ -17,8 +17,8 @@
   var Chroma = (function(){
     function createPaper(canvas){
         function addSolvent() {
-          console.log(`addSolvent to ${canvas}`);
           var context = canvas.getContext('2d');
+          console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           var imageData = context.getImageData(0,0,canvas.width,canvas.height);
           var data = imageData.data;
 
@@ -53,9 +53,9 @@
     var imageObj = new Image();
 
     imageObj.onload = function() {
-      context.drawImage(imageObj, 69, 50);
+      context.drawImage(imageObj, 0, 0);
       var paper = Chroma.create(canvas);
-      paper.run();
+      window.setTimeout(paper.run, 1000);
     };
     imageObj.src = 'assets/splodge.png';
   </script>
