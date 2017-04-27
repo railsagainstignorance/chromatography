@@ -71,12 +71,16 @@
     			}
     			return true;
     		}
-    	}, function () {
+    	}, function (x,y) {
     		//init
     		this.water = true;
     		this.value = 0.0;
     		this.prev = this.value;
     		this.next = this.value;
+
+        // if (x == y) {
+        //   console.log(`in init: x==y==${x}`);
+        // }
     	});
 
     	world.initialize([
