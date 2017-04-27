@@ -16,6 +16,115 @@
   <script src="assets/cellauto.min.js"></script>
   <script>
   var Chroma = (function(){
+
+    function invertData( data ) {
+      for (var i = 0; i < data.length; i += 4) {
+        data[i]     = 255 - data[i];     // red
+        data[i + 1] = 255 - data[i + 1]; // green
+        data[i + 2] = 255 - data[i + 2]; // blue
+      }
+    }
+
+    function createWorldOfExampleSplashes() {
+      // copied from http://sanojian.github.io/cellauto/#usage
+    	world = new CAWorld({
+    		width: 96*2,
+    		height: 64*2,
+    		cellSize: 6/2
+    	});
+
+    	world.palette = [];
+    	var colors = [];
+    	for (var index=0; index<64; index++) {
+    		world.palette.push('89, 125, 206, ' + index/64);
+    		colors[index] = 63 - index;
+    	}
+
+    	world.registerCellType('water', {
+    		getColor: function () {
+    			var v = (Math.max(2 * this.value + 0.02, 0) - 0.02) + 0.5;
+    			return colors[Math.floor(colors.length * v)];
+    		},
+    		process: function (neighbors) {
+    			if(this.droplet == true) {
+    				for (var i = 0; i < neighbors.length; i++) {
+    					if (neighbors[i] !== null && neighbors[i].value) {
+    						neighbors[i].value = 0.5 *this.value;
+    						neighbors[i].prev = 0.5 *this.prev;
+    					}
+    				}
+    				this.droplet = false;
+    				return true;
+    			}
+    			var avg = this.getSurroundingCellsAverageValue(neighbors, 'value');
+    			this.next = 0.99 * (2 * avg - this.prev);
+    			return true;
+    		},
+    		reset: function () {
+    			if(Math.random() > 0.9999) {
+    				this.value = -0.2 + 0.25*Math.random();
+    				this.prev = this.value;
+    				this.droplet = true;
+    			}
+    			else {
+    				this.prev = this.value;
+    				this.value = this.next;
+    			}
+    			return true;
+    		}
+    	}, function () {
+    		//init
+    		this.water = true;
+    		this.value = 0.0;
+    		this.prev = this.value;
+    		this.next = this.value;
+    	});
+
+    	world.initialize([
+    		{ name: 'water', distribution: 100 }
+    	]);
+
+    	return world;
+    }
+
+    function runAndDisplayWorld( world, numIterations, context ){
+      console.log(`world.width=${world.width}, world.height=${world.height}`);
+      console.log(`world.palette.length=${world.palette.length}`);
+
+      // construct palette arrays from world palette CSVs
+      var palette = [];
+      for (var p = 0; p < world.palette.length; p++) {
+        var colorsCSV = world.palette[p];
+        var colors = colorsCSV.split(', ');
+        colors[3] = Math.floor(colors[3] * 255);
+        palette.push(colors);
+      }
+
+      for (var i = 0; i < numIterations; i++) {
+        var imageData = context.getImageData(0,0,canvas.width,canvas.height);
+        var data = imageData.data;
+
+        console.log(`world iteration=${i}`);
+        world.step();
+        var data = imageData.data;
+
+        for (var y=0; y<world.height; y++) {
+          for (var x=0; x<world.width; x++) {
+              var cell = world.grid[y][x];
+              // TODO: awesome rendering of the cell
+              var colorIndex = cell.getColor();
+              var colors = palette[colorIndex];
+              var dataCellIndex = 4 * (x + (y * imageData.width));
+              for (var c = 0; c < 4; c++) {
+                data[dataCellIndex + c] = colors[c];
+              }
+          }
+        }
+
+        context.putImageData(imageData, 0, 0);
+      }
+    }
+
     function createPaper(canvas){
         function addSolvent() {
           var context = canvas.getContext('2d');
@@ -23,19 +132,11 @@
           var imageData = context.getImageData(0,0,canvas.width,canvas.height);
           var data = imageData.data;
 
-          for (var i = 0; i < data.length; i += 4) {
-            data[i]     = 255 - data[i];     // red
-            data[i + 1] = 255 - data[i + 1]; // green
-            data[i + 2] = 255 - data[i + 2]; // blue
-          }
+          invertData( data );
           context.putImageData(imageData, 0, 0);
 
-          var world = new CAWorld({
-              width: 96,
-              height: 64
-          });
-
-
+          var world = createWorldOfExampleSplashes();
+          runAndDisplayWorld( world, 100, context );
         }
 
         return {
