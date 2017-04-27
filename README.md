@@ -5,6 +5,14 @@ Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stu
 
 The plan
 
+prep
+* get canvas working - DONE
+* get cellauto working - DONE
+* get an animation working - DONE
+* feed the initial img into cellauto - er, no, argh
+   * looks like cellauto does not accept init values for cells via initializeFromGrid (or any other init fn). The actual call to init a cell value takes no args. So, looks like will have to modify cellauto if continue using that as the CA.
+
+main steps
 * start with an image, ideally of bright, sharp colours
 * in a canvas, so we can access individual pixels
 * model
