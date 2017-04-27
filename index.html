@@ -87,49 +87,64 @@
     	return world;
     }
 
+    function constructColorPalleteFromWorld( world ){
+      // construct palette arrays from world palette CSVs
+      var palette = [];
+      for (var p = 0; p < world.palette.length; p++) {
+        var colorsCSV = world.palette[p];
+        var colors = colorsCSV.split(', ');
+        colors[3] = Math.floor(colors[3] * 255);
+        palette.push(colors);
+      }
+
+      return palette;
+    }
+
+    function writeWorldCellsToImageData( world, imageData, palette ){
+      var data = imageData.data;
+      var cellSize = 2;
+
+      for (var y=0; y<world.height; y++) {
+        for (var x=0; x<world.width; x++) {
+          var cell = world.grid[y][x];
+          var colorIndex = cell.getColor();
+          var colors = palette[colorIndex];
+          for (var sx = 0; sx < cellSize; sx++) {
+            for (var sy = 0; sy < cellSize; sy++) {
+              for (var c = 0; c < 4; c++) {
+                var dataCellIndex = 4 * (((x*cellSize)+sx) + (((y*cellSize)+sy) * imageData.width));
+                data[dataCellIndex+c] = colors[c];
+              }
+            }
+          }
+        }
+      }
+    }
+
     function createPaper(canvas){
         function addSolvent() {
           var context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           var imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          var data = imageData.data;
-
-          // invertData( data );
-          // context.putImageData(imageData, 0, 0);
-
           var world = createWorldOfExampleSplashes();
-          // construct palette arrays from world palette CSVs
-          var palette = [];
-          for (var p = 0; p < world.palette.length; p++) {
-            var colorsCSV = world.palette[p];
-            var colors = colorsCSV.split(', ');
-            colors[3] = Math.floor(colors[3] * 255);
-            palette.push(colors);
-          }
+          var palette = constructColorPalleteFromWorld(world);
 
           console.log(`world.width=${world.width}, world.height=${world.height}`);
           console.log(`world.palette.length=${world.palette.length}`);
 
           var maxIterations = 100;
+          var pausePerFrame = 10;
 
-          function iterateAndDisplayWorld( numIterations=0 ){
-            console.log(`world iteration=${numIterations} of ${maxIterations}`);
+          function iterateAndDisplayWorld( numIterations=1 ){
+            // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.step();
-            for (var y=0; y<world.height; y++) {
-              for (var x=0; x<world.width; x++) {
-                  var cell = world.grid[y][x];
-                  var colorIndex = cell.getColor();
-                  var colors = palette[colorIndex];
-                  var dataCellIndex = 4 * (x + (y * imageData.width));
-                  for (var c = 0; c < 4; c++) {
-                    data[dataCellIndex + c] = colors[c];
-                  }
-              }
-            }
-
+            writeWorldCellsToImageData( world, imageData, palette );
             context.putImageData(imageData, 0, 0);
+
             if (numIterations < maxIterations) {
-              window.setTimeout(function(){ iterateAndDisplayWorld(numIterations+1); }, 100);              
+              window.setTimeout(function(){ iterateAndDisplayWorld(numIterations+1); }, pausePerFrame);
+            } else {
+              console.log(`ending on world iteration=${numIterations} of ${maxIterations}`);
             }
           }
 
