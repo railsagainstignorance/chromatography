@@ -13,6 +13,12 @@ Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stu
 * feed the initial img into cellauto - er, no, argh
    * looks like cellauto does not accept init values for cells via initializeFromGrid (or any other init fn). The actual call to init a cell value takes no args. So, looks like will have to modify cellauto if continue using that as the CA.
    * actually, looks ok. (x,y) already passed in to call to init (but does not seem to have been used in any of the examples), so can reference the image pixel values in the init call via a closure in createWorldOfExampleSplashes. Whew. Would probably be nicer to pass this in as a 3rd arg to initializeFromGrid, but that would involve changing the cellauto code.  
+* []: decide on set of dyes, e.g. RGB to start with?
+* {}: define dye characteristics, e.g. Rf, color
+* fn: map each imageData pixel to a list of dye amounts, to be used by init fn(x,y) via closure
+* fn: map list of dye amounts to imageData pixel
+* assume: continuous flow, used in process(neighbors) via closure
+
 
 ### main steps
 
