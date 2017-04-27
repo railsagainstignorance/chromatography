@@ -15,7 +15,7 @@
   </style>
   <script src="assets/cellauto.min.js"></script>
   <script>
-  var Chroma = (function(){
+  const Chroma = (function(){
 
     function invertData( data ) {
       for (var i = 0; i < data.length; i += 4) {
@@ -88,10 +88,10 @@
 
     function constructColorPaletteFromWorld( world ){
       // construct palette arrays from world palette CSVs
-      var palette = [];
+      const palette = [];
       for (var p = 0; p < world.palette.length; p++) {
-        var colorsCSV = world.palette[p];
-        var colors = colorsCSV.split(', ');
+        const colorsCSV = world.palette[p];
+        const colors = colorsCSV.split(', ');
         colors[3] = Math.floor(colors[3] * 255);
         palette.push(colors);
       }
@@ -100,7 +100,7 @@
     }
 
     function writeWorldCellsToImageData( world, imageData, palette, cellSize ){
-      var data = imageData.data;
+      const data = imageData.data;
 
       for (var y=0; y<world.height; y++) {
         for (var x=0; x<world.width; x++) {
@@ -121,18 +121,18 @@
 
     function createPaper(canvas){
         function addSolvent() {
-          var cellSize = 2;
-          var context = canvas.getContext('2d');
+          const cellSize = 2;
+          const maxIterations = 100;
+          const pausePerFrame = 10;
+
+          const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
-          var imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          var world = createWorldOfExampleSplashes(canvas.width/cellSize, canvas.height/cellSize);
-          var palette = constructColorPaletteFromWorld(world);
+          const imageData = context.getImageData(0,0,canvas.width,canvas.height);
+          const world = createWorldOfExampleSplashes(canvas.width/cellSize, canvas.height/cellSize);
+          const palette = constructColorPaletteFromWorld(world);
 
           console.log(`world.width=${world.width}, world.height=${world.height}`);
           console.log(`world.palette.length=${world.palette.length}`);
-
-          var maxIterations = 100;
-          var pausePerFrame = 10;
 
           function iterateAndDisplayWorld( numIterations=1 ){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
@@ -175,7 +175,7 @@
     imageObj.onload = function() {
       context.drawImage(imageObj, 0, 0);
       var paper = Chroma.create(canvas);
-      window.setTimeout(paper.run, 1000);
+      window.setTimeout(paper.run, 100);
     };
     imageObj.src = 'assets/splodge.png';
   </script>
