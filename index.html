@@ -13,6 +13,7 @@
     box-shadow: 10px 10px 5px #888888;
   }
   </style>
+  <script src="assets/cellauto.min.js"></script>
   <script>
   var Chroma = (function(){
     function createPaper(canvas){
@@ -28,6 +29,13 @@
             data[i + 2] = 255 - data[i + 2]; // blue
           }
           context.putImageData(imageData, 0, 0);
+
+          var world = new CAWorld({
+              width: 96,
+              height: 64
+          });
+
+
         }
 
         return {
