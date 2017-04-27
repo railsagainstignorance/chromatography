@@ -18,7 +18,10 @@ Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stu
 * fn: map each imageData pixel to a list of dye amounts, to be used by init fn(x,y) via closure
 * fn: map list of dye amounts to imageData pixel
 * assume: continuous flow, used in process(neighbors) via closure
-
+* fn: define process(neighbors)
+   * pushing dye into neighbors
+      * in direction of flow (Rf)
+      * sideways? against flow? - perhaps specify a diffusion attribute for when there is no flow, e.g. sideways
 
 ### main steps
 
