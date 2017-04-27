@@ -87,7 +87,7 @@
     	return world;
     }
 
-    function constructColorPalleteFromWorld( world ){
+    function constructColorPaletteFromWorld( world ){
       // construct palette arrays from world palette CSVs
       var palette = [];
       for (var p = 0; p < world.palette.length; p++) {
@@ -127,7 +127,7 @@
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           var imageData = context.getImageData(0,0,canvas.width,canvas.height);
           var world = createWorldOfExampleSplashes();
-          var palette = constructColorPalleteFromWorld(world);
+          var palette = constructColorPaletteFromWorld(world);
 
           console.log(`world.width=${world.width}, world.height=${world.height}`);
           console.log(`world.palette.length=${world.palette.length}`);
