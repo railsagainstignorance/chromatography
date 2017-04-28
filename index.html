@@ -55,9 +55,9 @@
         for (var d = 0; d < this.length; d++) {
           let tot = 0;
           for (var i = 0; i < 3; i++) {
-            tot = tot + (rgba[i] * this[d].RGBPattern[i]);
+            tot = tot + (rgba[i] * this[d].RGBPattern[i] / 255);
           }
-          tot = tot * rgba[3] / 255;
+          tot = tot * (rgba[3] / 255);
           dyeAmounts[d] = Math.min(tot, 1.0);
         }
       }
@@ -68,7 +68,7 @@
       // return [R, G, B, A]
       // assume no dyes => full white
 
-      const rgba = new Array(4); // calc 0-1.0 range, then convert to 0-255 later
+      var rgba = new Array(4); // calc 0-1.0 range, then convert to 0-255 later
 
       const sumDyeAmounts = dyeAmounts.reduce(( acc, cur ) => acc + cur, 0);
       if (sumDyeAmounts == 0) {
@@ -87,32 +87,57 @@
       return rgba;
     }
 
+    {
+      let testRgbaPixels = [
+        [ [0,0,0,0], [255,255,255,255] ],
+        [ [255,255,255,255], [255,255,255,255] ],
+        [ [255,0,0,255], [255,0,0,255] ],
+        [ [0,255,0,255], [0,255,0,255] ],
+        [ [0,0,255,255], [0,0,255,255] ],
+        [ [255,255,0,255], [255,255,0,255] ],
+        [ [10,11,12,255], [10,11,12,255] ],
+      ];
+
+      for (var p = 0; p < testRgbaPixels.length; p++) {
+        let fromPixel = testRgbaPixels[p][0];
+        let toPixel   = testRgbaPixels[p][1];
+        let dyeAmounts = dyes.splitRgbaPixelIntoDyes( fromPixel );
+        let outputPixel  = dyes.combineDyesIntoRgbaPixel( dyeAmounts );
+        for (var i = 0; i < fromPixel.length; i++) {
+          if (toPixel[i] !== outputPixel[i]) {
+            throw new Error(`Error: converting pixel to dyes and back: fromPixel=${fromPixel}, toPixel=${toPixel}, but outputPixel=${outputPixel}, and dyeAmounts=${dyeAmounts}`);
+          }
+        }
+      }
+    }
+
     dyes.convertImageDataIntoGridOfDyeAmounts = function(imageData){
       const data = imageData.data;
       const grid = [];
 
-      for (var y = 0; y < imageData.height; i++) {
-        grid.push([]);
-        for (var x = 0; i < imageData.width; i++) {
+      for (var x = 0; x < imageData.width; x++) {
+        let col = [];
+        grid.push(col);
+        for (var y = 0; y < imageData.height; y++) {
           let imageDataCellIndex = 4 * (x + (y * imageData.width));
           let rgba = data.slice(imageDataCellIndex, imageDataCellIndex + 4);
           let dyeAmounts = this.splitRgbaPixelIntoDyes(rgba);
-          grid[y].push(dyeAmounts);
+          col.push(dyeAmounts);
         }
       }
 
       return grid;
     }
 
-    dyes.writeWorldGridOfDyeAmountsToImageData = function(world, imageData){
-      if ((imageData.width !== world.width) || (imageData.height !== world.height)) {
-        throw new Error(`Error: mismatch found between size of world and imageData`);
+    dyes.writeGridOfDyeAmountsToImageData = function(grid, imageData){
+      if ((imageData.width !== grid.length) || (imageData.height !== grid[0].length)) {
+        throw new Error(`Error: mismatch found between size of grid and imageData`);
       }
       const data = imageData.data;
 
-      for (var y=0; y<world.height; y++) {
-        for (var x=0; x<world.width; x++) {
-          var cell = world.grid[y][x];
+      for (var x=0; x<imageData.width; x++) {
+        for (var y=0; y<imageData.height; y++) {
+          var cell = grid[x][y];
           var dyeAmounts = cell.getDyeAmounts();
           var rgba = this.combineDyesIntoRgbaPixel(dyeAmounts);
           var dataCellIndex = 4 * (x + (y * imageData.width));
@@ -121,144 +146,79 @@
           }
         }
       }
-      
+
       return imageData;
     }
 
-    function createWorldOfExampleSplashes(width, height, imageData, cellSize) {
-      const data = imageData.data; // starting data lifted from image
-
-      // copied from http://sanojian.github.io/cellauto/#usage
+    function createWorldOfBlottingPaperAndDyes(width, height, gridOfDyeAmounts) {
     	world = new CAWorld({
     		width: Math.floor(width),
     		height: Math.floor(height),
     	});
 
-    	world.palette = [];
-    	var colors = [];
-    	for (var index=0; index<64; index++) {
-    		world.palette.push('30, 0, 0, ' + index/64);
-    		colors[index] = 63 - index;
-    	}
-
-    	world.registerCellType('water', {
-    		getColor: function () {
-    			var v = (Math.max(2 * this.value + 0.02, 0) - 0.02) + 0.5;
-          if (v >= 1.0) {
-            v = 0.999;
-          }
-          var color = colors[Math.floor(colors.length * v)];
-          return color;
+    	world.registerCellType('paper', {
+    		getDyeAmounts: function () {
+          return this.value;
     		},
     		process: function (neighbors) {
-    			if(this.droplet == true) {
-    				for (var i = 0; i < neighbors.length; i++) {
-    					if (neighbors[i] !== null && neighbors[i].value) {
-    						neighbors[i].value = 0.5 *this.value;
-    						neighbors[i].prev = 0.5 *this.prev;
-    					}
-    				}
-    				this.droplet = false;
-    				return true;
-    			}
-    			var avg = this.getSurroundingCellsAverageValue(neighbors, 'value');
-    			this.next = 0.99 * (2 * avg - this.prev);
+    			// if(this.droplet == true) {
+    			// 	for (var i = 0; i < neighbors.length; i++) {
+    			// 		if (neighbors[i] !== null && neighbors[i].value) {
+    			// 			neighbors[i].value = 0.5 *this.value;
+    			// 			neighbors[i].prev = 0.5 *this.prev;
+    			// 		}
+    			// 	}
+    			// 	this.droplet = false;
+    			// 	return true;
+    			// }
+    			// var avg = this.getSurroundingCellsAverageValue(neighbors, 'value');
+    			// this.next = 0.99 * (2 * avg - this.prev);
+
+          // do clever flow stuff here
+
+          this.next = this.prev;
     			return true;
     		},
     		reset: function () {
-    			if(Math.random() > 0.9999) {
-    				this.value = -0.2 + 0.25*Math.random();
-    				this.prev = this.value;
-    				this.droplet = true;
-    			}
-    			else {
-    				this.prev = this.value;
-    				this.value = this.next;
-    			}
+  				this.prev = this.value;
+  				this.value = this.next;
     			return true;
     		}
     	}, function (x,y) {
     		//init
-    		this.water = true;
-
-        const imageDataCellIndex = 4 * ((x*cellSize) + ((y*cellSize) * imageData.width));
-        const pickRed = data[imageDataCellIndex];
-
-    		this.value = (pickRed/255)/4 - 0.2;
-        // console.log(`cell.init: pickRed=${pickRed}, this.value=${this.value}`);
-
+        this.value = gridOfDyeAmounts[y][x];
         this.prev = this.value;
     		this.next = this.value;
     	});
 
     	world.initialize([
-    		{ name: 'water', distribution: 100 }
+    		{ name: 'paper', distribution: 100 }
     	]);
 
     	return world;
     }
 
-    function constructColorPaletteFromWorld( world ){
-      // construct palette arrays from world palette CSVs
-      const palette = [];
-      for (var p = 0; p < world.palette.length; p++) {
-        const colorsCSV = world.palette[p];
-        const colors = colorsCSV.split(', ');
-        colors[3] = Math.floor(colors[3] * 255);
-        palette.push(colors);
-      }
-
-      return palette;
-    }
-
-    function writeWorldCellsToImageData( world, imageData, palette, cellSize ){
-      const data = imageData.data;
-
-      for (var y=0; y<world.height; y++) {
-        for (var x=0; x<world.width; x++) {
-          var cell = world.grid[y][x];
-          var colorIndex = cell.getColor();
-          var colors = palette[colorIndex];
-            if (! colors) {
-              console.log(`writeWorldCellsToImageData: colorIndex=${colorIndex}, colors=${colors}`);
-            }
-          for (var sx = 0; sx < cellSize; sx++) {
-            for (var sy = 0; sy < cellSize; sy++) {
-              for (var c = 0; c < 4; c++) {
-                var dataCellIndex = 4 * (((x*cellSize)+sx) + (((y*cellSize)+sy) * imageData.width));
-                data[dataCellIndex+c] = colors[c];
-              }
-            }
-          }
-        }
-      }
-    }
-
     function createPaper(canvas){
         function addSolvent() {
-          const cellSize = 2;
-          const maxIterations = 100;
+          const maxIterations = 3;
           const pausePerFrame = 10;
 
-          const context   = canvas.getContext('2d');
+          const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          const     world = createWorldOfExampleSplashes(canvas.width/cellSize, canvas.height/cellSize, imageData, cellSize);
-          const   palette = constructColorPaletteFromWorld(world);
-
+          const gridOfDyeAmounts = dyes.convertImageDataIntoGridOfDyeAmounts(imageData);
+          const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, gridOfDyeAmounts);
           console.log(`world.width=${world.width}, world.height=${world.height}`);
-          console.log(`world.palette.length=${world.palette.length}`);
 
           var numIterations=1;
 
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.step();
-            writeWorldCellsToImageData( world, imageData, palette, cellSize );
+            dyes.writeGridOfDyeAmountsToImageData(world.grid, imageData);
             context.putImageData(imageData, 0, 0);
 
             numIterations = numIterations + 1;
-
             if (numIterations < maxIterations) {
               window.requestAnimationFrame(iterateAndDisplayWorld);
             } else {
