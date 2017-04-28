@@ -20,12 +20,71 @@
   <script>
   const Chroma = (function(){
 
-    function invertData( data ) {
-      for (var i = 0; i < data.length; i += 4) {
-        data[i]     = 255 - data[i];     // red
-        data[i + 1] = 255 - data[i + 1]; // green
-        data[i + 2] = 255 - data[i + 2]; // blue
+    const dyes = [
+      {
+        name: 'red',
+          Rf: 0.4,  // propensity to go with the flow
+          Rd: 0.05, // propensity to 'bleed' if no flow
+          RGBPattern: [1.0, 0, 0], // how to read it's value from/to RGB triple
+      },
+      {
+        name: 'green',
+          Rf: 0.5,
+          Rd: 0.07,
+          RGBPattern: [0, 1.0, 0],
+      },
+      {
+        name: 'blue',
+          Rf: 0.6,
+          Rd: 0.09,
+          RGBPattern: [0, 0, 1.0],
+      },
+    ];
+
+    dyes.splitRgbaPixelIntoDyes = function(rgba) {
+      // assume rgba is [R,G,B, A], each 0-255
+      // use A to dilute dye amounts
+      // assume full white [255,255,255], or full transparent, has no dyes at all
+      // return array of dye amounts, min 0, max 1.0
+
+      var dyeAmounts = new Array(this.length);
+
+      if ( rgba[3]==0 || (rgba[0]==255 && rgba[1]==255 && rgba[2]==255)) {
+        dyeAmounts.fill(0);
+      } else {
+        for (var d = 0; d < this.length; d++) {
+          let tot = 0;
+          for (var i = 0; i < 3; i++) {
+            tot = tot + (rgba[i] * this[d].RGBPattern[i]);
+          }
+          tot = tot * rgba[3] / 255;
+          dyeAmounts[d] = Math.min(tot, 1.0);
+        }
       }
+      return dyeAmounts;
+    }
+
+    dyes.combineDyesIntoRgbaPixel = function(dyeAmounts) {
+      // return [R, G, B, A]
+      // assume no dyes => full white
+
+      const rgba = new Array(4); // calc 0-1.0 range, then convert to 0-255 later
+
+      const sumDyeAmounts = dyeAmounts.reduce(( acc, cur ) => acc + cur, 0);
+      if (sumDyeAmounts == 0) {
+        rgba.fill(1);
+      } else {
+        rgba.fill(0);
+        for (var d = 0; d < this.length; d++) {
+          for (var i = 0; i < 3; i++) {
+            rgba[i] = rgba[i] + (dyeAmounts[d] * this[d].RGBPattern[i]);
+          }
+        }
+        rgba[3] = 1;
+      }
+
+      rgba = rgba.map(c => {return (c>1.0)? 255 : Math.floor(c * 255);});
+      return rgba;
     }
 
     function createWorldOfExampleSplashes(width, height, imageData, cellSize) {
