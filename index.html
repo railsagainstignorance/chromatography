@@ -15,6 +15,9 @@
   </style>
   <script src="assets/cellauto.min.js"></script>
   <script>
+    window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+  </script>
+  <script>
   const Chroma = (function(){
 
     function invertData( data ) {
@@ -138,14 +141,18 @@
           console.log(`world.width=${world.width}, world.height=${world.height}`);
           console.log(`world.palette.length=${world.palette.length}`);
 
-          function iterateAndDisplayWorld( numIterations=1 ){
+          var numIterations=1;
+
+          function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.step();
             writeWorldCellsToImageData( world, imageData, palette, cellSize );
             context.putImageData(imageData, 0, 0);
 
+            numIterations = numIterations + 1;
+
             if (numIterations < maxIterations) {
-              window.setTimeout(function(){ iterateAndDisplayWorld(numIterations+1); }, pausePerFrame);
+              window.requestAnimationFrame(iterateAndDisplayWorld);
             } else {
               console.log(`ending on world iteration=${numIterations} of ${maxIterations}`);
             }
