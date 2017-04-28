@@ -87,6 +87,44 @@
       return rgba;
     }
 
+    dyes.convertImageDataIntoGridOfDyeAmounts = function(imageData){
+      const data = imageData.data;
+      const grid = [];
+
+      for (var y = 0; y < imageData.height; i++) {
+        grid.push([]);
+        for (var x = 0; i < imageData.width; i++) {
+          let imageDataCellIndex = 4 * (x + (y * imageData.width));
+          let rgba = data.slice(imageDataCellIndex, imageDataCellIndex + 4);
+          let dyeAmounts = this.splitRgbaPixelIntoDyes(rgba);
+          grid[y].push(dyeAmounts);
+        }
+      }
+
+      return grid;
+    }
+
+    dyes.writeWorldGridOfDyeAmountsToImageData = function(world, imageData){
+      if ((imageData.width !== world.width) || (imageData.height !== world.height)) {
+        throw new Error(`Error: mismatch found between size of world and imageData`);
+      }
+      const data = imageData.data;
+
+      for (var y=0; y<world.height; y++) {
+        for (var x=0; x<world.width; x++) {
+          var cell = world.grid[y][x];
+          var dyeAmounts = cell.getDyeAmounts();
+          var rgba = this.combineDyesIntoRgbaPixel(dyeAmounts);
+          var dataCellIndex = 4 * (x + (y * imageData.width));
+          for (var i = 0; i < 4; i++) {
+            data[dataCellIndex+i] = rgba[i];
+          }
+        }
+      }
+      
+      return imageData;
+    }
+
     function createWorldOfExampleSplashes(width, height, imageData, cellSize) {
       const data = imageData.data; // starting data lifted from image
 
