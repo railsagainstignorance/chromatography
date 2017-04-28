@@ -28,7 +28,9 @@
       }
     }
 
-    function createWorldOfExampleSplashes(width, height) {
+    function createWorldOfExampleSplashes(width, height, imageData, cellSize) {
+      const data = imageData.data; // starting data lifted from image
+
       // copied from http://sanojian.github.io/cellauto/#usage
     	world = new CAWorld({
     		width: Math.floor(width),
@@ -45,7 +47,11 @@
     	world.registerCellType('water', {
     		getColor: function () {
     			var v = (Math.max(2 * this.value + 0.02, 0) - 0.02) + 0.5;
-    			return colors[Math.floor(colors.length * v)];
+          if (v >= 1.0) {
+            v = 0.999;
+          }
+          var color = colors[Math.floor(colors.length * v)];
+          return color;
     		},
     		process: function (neighbors) {
     			if(this.droplet == true) {
@@ -77,13 +83,15 @@
     	}, function (x,y) {
     		//init
     		this.water = true;
-    		this.value = 0.0;
-    		this.prev = this.value;
-    		this.next = this.value;
 
-        // if (x == y) {
-        //   console.log(`in init: x==y==${x}`);
-        // }
+        const imageDataCellIndex = 4 * ((x*cellSize) + ((y*cellSize) * imageData.width));
+        const pickRed = data[imageDataCellIndex];
+
+    		this.value = (pickRed/255)/4 - 0.2;
+        // console.log(`cell.init: pickRed=${pickRed}, this.value=${this.value}`);
+
+        this.prev = this.value;
+    		this.next = this.value;
     	});
 
     	world.initialize([
@@ -114,6 +122,9 @@
           var cell = world.grid[y][x];
           var colorIndex = cell.getColor();
           var colors = palette[colorIndex];
+            if (! colors) {
+              console.log(`writeWorldCellsToImageData: colorIndex=${colorIndex}, colors=${colors}`);
+            }
           for (var sx = 0; sx < cellSize; sx++) {
             for (var sy = 0; sy < cellSize; sy++) {
               for (var c = 0; c < 4; c++) {
@@ -132,11 +143,11 @@
           const maxIterations = 100;
           const pausePerFrame = 10;
 
-          const context = canvas.getContext('2d');
+          const context   = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          const world = createWorldOfExampleSplashes(canvas.width/cellSize, canvas.height/cellSize);
-          const palette = constructColorPaletteFromWorld(world);
+          const     world = createWorldOfExampleSplashes(canvas.width/cellSize, canvas.height/cellSize, imageData, cellSize);
+          const   palette = constructColorPaletteFromWorld(world);
 
           console.log(`world.width=${world.width}, world.height=${world.height}`);
           console.log(`world.palette.length=${world.palette.length}`);
