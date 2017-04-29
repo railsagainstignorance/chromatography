@@ -23,25 +23,33 @@
     const DYES = [
       {
         name: 'red',
-          Rf: 0.4,  // propensity to go with the flow
-          Rd: 0.05, // propensity to 'bleed' if no flow
+          Rf: 0.2,  // propensity to go with the flow
+          Rd: 0.1, // propensity to 'bleed' if no flow
           RGBPattern: [1.0, 0, 0], // how to read it's value from/to RGB triple
       },
       {
         name: 'green',
           Rf: 0.1,
-          Rd: 0.07,
+          Rd: 0.15,
           RGBPattern: [0, 1.0, 0],
       },
       {
         name: 'blue',
-          Rf: 0.7,
-          Rd: 0.09,
+          Rf: 0.4,
+          Rd: 0.075,
           RGBPattern: [0, 0, 1.0],
       },
     ];
 
-    DYES.RGBMaximum = 200;
+    // check internal consistency of Rf and Rd
+
+    for( let dye of DYES ){
+      if ( (dye.Rf + (4 * dye.Rd)) > 1.0 ) {
+        throw new Error(`ERROR: Rf+4*Rd>1.0 for name=${dye.name}, Rf=${dye.Rf}, Rd=${dye.Rd}`);
+      }
+    }
+
+    DYES.RGBMaximum = 240;
 
     DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
