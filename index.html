@@ -108,7 +108,7 @@
         let outputPixel  = DYES.combineDyesIntoRgbaPixel( dyeAmounts );
         for (var i = 0; i < fromPixel.length; i++) {
           if (toPixel[i] !== outputPixel[i]) {
-            throw new Error(`Error: in Testing: converting pixel to dyes and back: ${testRgbaPixels[p][2]}: fromPixel=${fromPixel}, toPixel=${toPixel}, but outputPixel=${outputPixel}, and dyeAmounts=${dyeAmounts}`);
+            throw new Error(`Error: in testing Dye Conversion: converting pixel to dyes and back: ${testRgbaPixels[p][2]}: fromPixel=${fromPixel}, toPixel=${toPixel}, but outputPixel=${outputPixel}, and dyeAmounts=${dyeAmounts}`);
           }
         }
       }
@@ -156,6 +156,7 @@
       // test conversion imagaData into grid of dye amounts, and back
       var height = 2;
       var width  = 2;
+      var numPixels = width * height;
       var testCanvas = document.createElement('canvas');
       testCanvas.width = width;
       testCanvas.height = height;
@@ -164,26 +165,26 @@
       // specify test imageData examples
 
       var testImageDatas = [
-        [
-          [
+          {
+            from: [
             [255,255,255,255], [255,255,255,255],
             [255,255,255,255], [255,255,255,255]
-          ],
-          [
+            ],
+            target: [
             [255,255,255,255], [255,255,255,255],
             [255,255,255,255], [255,255,255,255]
-          ],
-          'all white --> all white'
-        ]
+            ],
+            desc: 'all white --> all white'
+          }
       ];
 
       for (var t = 0; t < testImageDatas.length; t++) {
-        // create imagData
+        // create imageData
         var fromImageData = testContext.createImageData(width, height);
         var data = fromImageData.data;
-        for (var p = 0; p < testImageDatas[t].length; p++) {
+        for (var p = 0; p < numPixels; p++) {
           for (var i = 0; i < 4; i++) {
-            data[(4 * p) + i] = testImageDatas[t][p][i];
+            data[(4 * p) + i] = testImageDatas[t].from[p][i];
           }
         }
         // convert to dye amounts
@@ -192,9 +193,20 @@
         var outputImageData = DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, testContext.createImageData(width, height));
         // compare
         if (fromImageData.data.length !== outputImageData.data.length) {
-          throw new Error(`ERROR: in Testing: fromImageData.data.length(${fromImageData.data.length}) !== outputImageData.data.length(${outputImageData.data.length})`);
+          throw new Error(`ERROR: in testing Grid Conversion: fromImageData.data.length(${fromImageData.data.length}) !== outputImageData.data.length(${outputImageData.data.length})`);
         }
+        var targetImageData = testImageDatas[t].target;
         // compare pixels
+        for (var x = 0; x < width; x++) {
+          for (var y = 0; y < height; y++) {
+            let pixelIndex = 4 * (x + (y * width));
+            for (var i = 0; i < 4; i++) {
+              if (fromImageData[pixelIndex + i] !== outputImageData[pixelIndex + i]) {
+                throw new Error(`ERROR: in testing Grid Conversion: x=${x}, y=${y}, i=${i}, fromImageData[pixelIndex + i]=${fromImageData[pixelIndex + i]}, outputImageData[pixelIndex + i]=${outputImageData[pixelIndex + i]}, fromImageData=${fromImageData}, outputImageData=${outputImageData}`);
+              }
+            }
+          }
+        }
       }
     }
 
