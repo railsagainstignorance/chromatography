@@ -11,6 +11,8 @@
     border-style: solid;
 
     box-shadow: 10px 10px 5px #888888;
+
+    background-color: white;
   }
   </style>
   <script src="assets/cellauto.min.js"></script>
@@ -270,6 +272,7 @@
     		height: Math.floor(height),
     	});
 
+      world.flowRate = 1.0;
       world.bleedDirections = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
 
     	world.registerCellType('paper', {
@@ -280,7 +283,7 @@
           // do clever flow stuff here
 
           for (var d = 0; d < DYES.length; d++) {
-            const  flowAmount = this.value[d] * DYES[d].Rf;
+            const  flowAmount = this.value[d] * DYES[d].Rf * world.flowRate;
             const bleedAmount = this.value[d] * DYES[d].Rd;
 
             this.next[d] = this.value[d];
@@ -346,7 +349,7 @@
 
     function createPaper(canvas){
         function addSolvent() {
-          const maxIterations = 1000;
+          const maxIterations = 100;
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
@@ -368,6 +371,7 @@
               window.requestAnimationFrame(iterateAndDisplayWorld);
             } else {
               console.log(`ending on world iteration=${numIterations} of ${maxIterations}`);
+              mediaRecorder.stop();
             }
           }
 
@@ -394,6 +398,30 @@
   <script>
     var canvas = document.getElementById('myCanvas');
     var context = canvas.getContext('2d');
+
+    var frameRate = 15;
+    var stream = canvas.captureStream(frameRate);
+    var mimeType = 'video/webm';
+    var options = {mimeType: mimeType};
+    var mediaRecorder = new MediaRecorder(stream, options);
+    mediaRecorder.ondataavailable = download;
+    mediaRecorder.start();
+    var recordedFile = 'chromatography-experiment.webm';
+    function download(event) {
+      var videoData = [ event.data ];
+      var blob = new Blob(videoData, {
+        type: mimeType
+      });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      document.body.appendChild(a);
+      a.style = 'display: none';
+      a.href = url;
+      a.download = recordedFile;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
+
     var imageObj = new Image();
 
     imageObj.onload = function() {
