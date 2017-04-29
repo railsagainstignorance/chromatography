@@ -20,7 +20,7 @@
   <script>
   const Chroma = (function(){
 
-    const dyes = [
+    const DYES = [
       {
         name: 'red',
           Rf: 0.4,  // propensity to go with the flow
@@ -41,7 +41,7 @@
       },
     ];
 
-    dyes.splitRgbaPixelIntoDyes = function(rgba) {
+    DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
       // use A to dilute dye amounts
       // assume full white [255,255,255], or full transparent, has no dyes at all
@@ -64,7 +64,7 @@
       return dyeAmounts;
     }
 
-    dyes.combineDyesIntoRgbaPixel = function(dyeAmounts) {
+    DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
       // return [R, G, B, A]
       // assume no dyes => full white
 
@@ -101,8 +101,8 @@
       for (var p = 0; p < testRgbaPixels.length; p++) {
         let fromPixel = testRgbaPixels[p][0];
         let toPixel   = testRgbaPixels[p][1];
-        let dyeAmounts = dyes.splitRgbaPixelIntoDyes( fromPixel );
-        let outputPixel  = dyes.combineDyesIntoRgbaPixel( dyeAmounts );
+        let dyeAmounts = DYES.splitRgbaPixelIntoDyes( fromPixel );
+        let outputPixel  = DYES.combineDyesIntoRgbaPixel( dyeAmounts );
         for (var i = 0; i < fromPixel.length; i++) {
           if (toPixel[i] !== outputPixel[i]) {
             throw new Error(`Error: converting pixel to dyes and back: fromPixel=${fromPixel}, toPixel=${toPixel}, but outputPixel=${outputPixel}, and dyeAmounts=${dyeAmounts}`);
@@ -111,7 +111,7 @@
       }
     }
 
-    dyes.convertImageDataIntoGridOfDyeAmounts = function(imageData){
+    DYES.convertImageDataIntoGridOfDyeAmounts = function(imageData){
       const data = imageData.data;
       const grid = [];
 
@@ -129,7 +129,7 @@
       return grid;
     }
 
-    dyes.writeGridOfDyeAmountsToImageData = function(grid, imageData){
+    DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData){
       if ((imageData.width !== grid.length) || (imageData.height !== grid[0].length)) {
         throw new Error(`Error: mismatch found between size of grid and imageData`);
       }
@@ -176,19 +176,26 @@
 
           // do clever flow stuff here
 
-          this.next = this.prev;
+          for (var d = 0; d < DYES.length; d++) {
+            this.next[d] = this.value[d] * (1 - DYES[d].Rf);
+            if (neighbors[world.TOP.index] !== null) {
+              this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
+            }
+          }
+
     			return true;
     		},
     		reset: function () {
-  				this.prev = this.value;
+  				this.prev  = this.value;
   				this.value = this.next;
+          this.next  = this.next.slice(0);
     			return true;
     		}
     	}, function (x,y) {
     		//init
-        this.value = gridOfDyeAmounts[y][x];
-        this.prev = this.value;
-    		this.next = this.value;
+        this.value = gridOfDyeAmounts[y][x].slice(0);
+        this.prev = this.value.slice(0);
+    		this.next = this.value.slice(0);
     	});
 
     	world.initialize([
@@ -200,13 +207,11 @@
 
     function createPaper(canvas){
         function addSolvent() {
-          const maxIterations = 3;
-          const pausePerFrame = 10;
-
+          const maxIterations = 100;
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          const gridOfDyeAmounts = dyes.convertImageDataIntoGridOfDyeAmounts(imageData);
+          const gridOfDyeAmounts = DYES.convertImageDataIntoGridOfDyeAmounts(imageData);
           const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, gridOfDyeAmounts);
           console.log(`world.width=${world.width}, world.height=${world.height}`);
 
@@ -215,7 +220,7 @@
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.step();
-            dyes.writeGridOfDyeAmountsToImageData(world.grid, imageData);
+            DYES.writeGridOfDyeAmountsToImageData(world.grid, imageData);
             context.putImageData(imageData, 0, 0);
 
             numIterations = numIterations + 1;
