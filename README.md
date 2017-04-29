@@ -24,6 +24,7 @@ Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stu
       * in direction of flow (Rf)
       * sideways? against flow? - perhaps specify a diffusion attribute for when there is no flow, e.g. sideways
 * construct clean image of primary colours for testing.
+* handle display of colors fading to .. white, not black. Tricky.
 
 ### main steps
 

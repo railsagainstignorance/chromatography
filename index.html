@@ -41,6 +41,8 @@
       },
     ];
 
+    DYES.RGBMinimum = 0.01;
+
     DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
       // use A to dilute dye amounts
@@ -80,7 +82,18 @@
             rgba[i] = rgba[i] + (dyeAmounts[d] * this[d].RGBPattern[i]);
           }
         }
-        rgba[3] = 1;
+
+        var anyRGBAboveMinimum = false;
+        for (var i = 0; i < 3; i++) {
+          anyRGBAboveMinimum = (rgba[i] > this.RGBMinimum);
+          if(anyRGBAboveMinimum){ break; }
+        }
+
+        if (anyRGBAboveMinimum) {
+          rgba[3] = 1;
+        } else {
+          rgba.fill(1);
+        }
       }
 
       rgba = rgba.map(c => {return (c>1.0)? 255 : Math.floor(c * 255);});
@@ -252,26 +265,18 @@
           return this.value;
     		},
     		process: function (neighbors) {
-    			// if(this.droplet == true) {
-    			// 	for (var i = 0; i < neighbors.length; i++) {
-    			// 		if (neighbors[i] !== null && neighbors[i].value) {
-    			// 			neighbors[i].value = 0.5 *this.value;
-    			// 			neighbors[i].prev = 0.5 *this.prev;
-    			// 		}
-    			// 	}
-    			// 	this.droplet = false;
-    			// 	return true;
-    			// }
-    			// var avg = this.getSurroundingCellsAverageValue(neighbors, 'value');
-    			// this.next = 0.99 * (2 * avg - this.prev);
-
           // do clever flow stuff here
 
+          // for (var d = 0; d < DYES.length; d++) {
+          //   this.next[d] = this.value[d] * (1 - DYES[d].Rf);
+          //   if (neighbors[world.TOP.index] !== null) {
+          //     this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
+          //   }
+          // }
+
+          // experiment with simple fading
           for (var d = 0; d < DYES.length; d++) {
             this.next[d] = this.value[d] * (1 - DYES[d].Rf);
-            if (neighbors[world.TOP.index] !== null) {
-              this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
-            }
           }
 
     			return true;
