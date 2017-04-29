@@ -23,33 +23,37 @@
     const DYES = [
       {
         name: 'red',
-          Rf: 0.2,  // propensity to go with the flow
+          Rf: 0.1,  // propensity to go with the flow
           Rd: 0.1, // propensity to 'bleed' if no flow
           RGBPattern: [1.0, 0, 0], // how to read it's value from/to RGB triple
       },
       {
         name: 'green',
-          Rf: 0.1,
-          Rd: 0.15,
+          Rf: 0.08,
+          Rd: 0.075,
           RGBPattern: [0, 1.0, 0],
       },
       {
         name: 'blue',
-          Rf: 0.4,
-          Rd: 0.075,
+          Rf: 0.05,
+          Rd: 0.11,
           RGBPattern: [0, 0, 1.0],
       },
     ];
 
-    // check internal consistency of Rf and Rd
+    {
+      // check internal consistency of Rf and Rd
 
-    for( let dye of DYES ){
-      if ( (dye.Rf + (4 * dye.Rd)) > 1.0 ) {
-        throw new Error(`ERROR: Rf+4*Rd>1.0 for name=${dye.name}, Rf=${dye.Rf}, Rd=${dye.Rd}`);
+      let numDirections = 8;
+
+      for( let dye of DYES ){
+        if ( (dye.Rf + (numDirections * dye.Rd)) > 1.0 ) {
+          throw new Error(`ERROR: Rf + numDirections*Rd >1.0 for name=${dye.name}, Rf=${dye.Rf}, Rd=${dye.Rd}, numDirections=${numDirections}`);
+        }
       }
     }
 
-    DYES.RGBMaximum = 240;
+    DYES.RGBMaximum = 253;
 
     DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
@@ -73,7 +77,8 @@
             tot = tot + (rgba[i] * this[d].RGBPattern[i] / 255);
           }
           tot = tot * (rgba[3] / 255);
-          dyeAmounts[d] = Math.min(tot, 1.0);
+          // dyeAmounts[d] = Math.min(tot, 1.0);
+          dyeAmounts[d] = tot;
         }
       }
       return dyeAmounts;
@@ -263,6 +268,8 @@
     		height: Math.floor(height),
     	});
 
+      world.bleedDirections = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
+
     	world.registerCellType('paper', {
     		getDyeAmounts: function () {
           return this.value;
@@ -286,7 +293,7 @@
             }
 
             // this cell will receive a bleed from, and bleed to, each of the directions
-            for( let direction of [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP] ){
+            for( let direction of world.bleedDirections ){
               if (neighbors[direction.index] !== null) {
                 this.next[d] = this.next[d] + (neighbors[direction.index].value[d] * DYES[d].Rd);
                 this.next[d] = this.next[d] - bleedAmount;
@@ -392,6 +399,7 @@
       var paper = Chroma.create(canvas);
       window.setTimeout(paper.run, 100);
     };
+    // imageObj.src = 'assets/profile_400x400.jpg';
     imageObj.src = 'assets/splodge.png';
   </script>
 </body>
