@@ -263,9 +263,26 @@
           // do clever flow stuff here
 
           for (var d = 0; d < DYES.length; d++) {
-            this.next[d] = this.value[d] * (1 - DYES[d].Rf);
+            const  flowAmount = this.value[d] * DYES[d].Rf;
+            const bleedAmount = this.value[d] * DYES[d].Rd;
+
+            this.next[d] = this.value[d];
+
+            // some of this cell's dyes will flow to BOTTOM
+            if (neighbors[world.BOTTOM.index] !== null) {
+              this.next[d] = this.next[d] - flowAmount;
+            }
+            // this cell will receive a flow from TOP
             if (neighbors[world.TOP.index] !== null) {
               this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
+            }
+
+            // this cell will receive a bleed from, and bleed to, each of the directions
+            for( let direction of [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP] ){
+              if (neighbors[direction.index] !== null) {
+                this.next[d] = this.next[d] + (neighbors[direction.index].value[d] * DYES[d].Rd);
+                this.next[d] = this.next[d] - bleedAmount;
+              }
             }
           }
 
