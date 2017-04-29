@@ -54,6 +54,7 @@
     }
 
     DYES.RGBMaximum = 253;
+    DYES.volumeMultipler = 3.0;
 
     DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
@@ -135,7 +136,7 @@
       }
     }
 
-    DYES.convertImageDataIntoGridOfDyeAmounts = function(imageData){
+    DYES.convertImageDataIntoGridOfDyeAmounts = function(imageData, volumeMultiplier=1.0){
       const data = imageData.data;
       const grid = [];
 
@@ -146,6 +147,7 @@
           let imageDataCellIndex = 4 * (x + (y * imageData.width));
           let rgba = data.slice(imageDataCellIndex, imageDataCellIndex + 4);
           let dyeAmounts = this.splitRgbaPixelIntoDyes(rgba);
+          dyeAmounts = dyeAmounts.map(da => { return da * volumeMultiplier; });
           col.push(dyeAmounts);
         }
       }
@@ -348,7 +350,7 @@
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          const gridOfDyeAmounts = DYES.convertImageDataIntoGridOfDyeAmounts(imageData);
+          const gridOfDyeAmounts = DYES.convertImageDataIntoGridOfDyeAmounts(imageData, DYES.volumeMultipler);
           const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, gridOfDyeAmounts);
           console.log(`world.width=${world.width}, world.height=${world.height}`);
 
