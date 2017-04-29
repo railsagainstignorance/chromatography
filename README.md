@@ -18,11 +18,12 @@ Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stu
 * {}: define dye characteristics, e.g. Rf, color - DONE
 * fn: map each imageData pixel to a list of dye amounts, to be used by init fn(x,y) via closure - DONE
 * fn: map list of dye amounts to imageData pixel - DONE
-* assume: continuous flow, used in process(neighbors) via closure
-* fn: define process(neighbors)
+* assume: continuous flow, used in process(neighbors) via closure - DONE
+* fn: define process(neighbors) - DONE
    * pushing dye into neighbors
       * in direction of flow (Rf)
       * sideways? against flow? - perhaps specify a diffusion attribute for when there is no flow, e.g. sideways
+* construct clean image of primary colours for testing.
 
 ### main steps
 

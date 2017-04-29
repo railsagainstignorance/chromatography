@@ -88,14 +88,17 @@
     }
 
     {
+      // test the conversion from RGBA Pixels to dyes, and back
       let testRgbaPixels = [
-        [ [0,0,0,0], [255,255,255,255] ],
-        [ [255,255,255,255], [255,255,255,255] ],
-        [ [255,0,0,255], [255,0,0,255] ],
-        [ [0,255,0,255], [0,255,0,255] ],
-        [ [0,0,255,255], [0,0,255,255] ],
-        [ [255,255,0,255], [255,255,0,255] ],
-        [ [10,11,12,255], [10,11,12,255] ],
+        [ [  0,  0,  0,  0], [255,255,255,255], 'transparent --> white' ],
+        [ [ 10, 20, 30,  0], [255,255,255,255], 'transparent --> white' ],
+        [ [255,255,255,255], [255,255,255,255], 'white --> white' ],
+        [ [255,  0,  0,255], [255,  0,  0,255], 'full red --> full red' ],
+        [ [  0,255,  0,255], [  0,255,  0,255], 'full green --> full green' ],
+        [ [  0,  0,255,255], [  0,  0,255,255], 'full blue --> full blue' ],
+        [ [255,255,  0,255], [255,255,  0,255], 'full red+green --> full red+green' ],
+        [ [ 10, 11, 12,255], [ 10, 11, 12,255], 'mix of RGB --> mix of RGB' ],
+        [ [ 10, 20, 30, 51], [  2,  4,  6,255], 'mix of RGB + weak A --> mix of RGD + full A'],
       ];
 
       for (var p = 0; p < testRgbaPixels.length; p++) {
@@ -105,7 +108,7 @@
         let outputPixel  = DYES.combineDyesIntoRgbaPixel( dyeAmounts );
         for (var i = 0; i < fromPixel.length; i++) {
           if (toPixel[i] !== outputPixel[i]) {
-            throw new Error(`Error: converting pixel to dyes and back: fromPixel=${fromPixel}, toPixel=${toPixel}, but outputPixel=${outputPixel}, and dyeAmounts=${dyeAmounts}`);
+            throw new Error(`Error: in Testing: converting pixel to dyes and back: ${testRgbaPixels[p][2]}: fromPixel=${fromPixel}, toPixel=${toPixel}, but outputPixel=${outputPixel}, and dyeAmounts=${dyeAmounts}`);
           }
         }
       }
@@ -137,8 +140,7 @@
 
       for (var x=0; x<imageData.width; x++) {
         for (var y=0; y<imageData.height; y++) {
-          var cell = grid[x][y];
-          var dyeAmounts = cell.getDyeAmounts();
+          var dyeAmounts = grid[x][y];
           var rgba = this.combineDyesIntoRgbaPixel(dyeAmounts);
           var dataCellIndex = 4 * (x + (y * imageData.width));
           for (var i = 0; i < 4; i++) {
@@ -148,6 +150,52 @@
       }
 
       return imageData;
+    }
+
+    {
+      // test conversion imagaData into grid of dye amounts, and back
+      var height = 2;
+      var width  = 2;
+      var testCanvas = document.createElement('canvas');
+      testCanvas.width = width;
+      testCanvas.height = height;
+      var testContext = testCanvas.getContext('2d');
+
+      // specify test imageData examples
+
+      var testImageDatas = [
+        [
+          [
+            [255,255,255,255], [255,255,255,255],
+            [255,255,255,255], [255,255,255,255]
+          ],
+          [
+            [255,255,255,255], [255,255,255,255],
+            [255,255,255,255], [255,255,255,255]
+          ],
+          'all white --> all white'
+        ]
+      ];
+
+      for (var t = 0; t < testImageDatas.length; t++) {
+        // create imagData
+        var fromImageData = testContext.createImageData(width, height);
+        var data = fromImageData.data;
+        for (var p = 0; p < testImageDatas[t].length; p++) {
+          for (var i = 0; i < 4; i++) {
+            data[(4 * p) + i] = testImageDatas[t][p][i];
+          }
+        }
+        // convert to dye amounts
+        var gridOfDyeAmounts = DYES.convertImageDataIntoGridOfDyeAmounts(fromImageData);
+        // convert to imageData
+        var outputImageData = DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, testContext.createImageData(width, height));
+        // compare
+        if (fromImageData.data.length !== outputImageData.data.length) {
+          throw new Error(`ERROR: in Testing: fromImageData.data.length(${fromImageData.data.length}) !== outputImageData.data.length(${outputImageData.data.length})`);
+        }
+        // compare pixels
+      }
     }
 
     function createWorldOfBlottingPaperAndDyes(width, height, gridOfDyeAmounts) {
@@ -205,6 +253,20 @@
     	return world;
     }
 
+    function convertWorldGridToGridOfDyeAmounts(worldGrid){
+      var gridOfDyeAmounts = [];
+
+      for (var x = 0; x < worldGrid.length; x++) {
+        var col = [];
+        gridOfDyeAmounts.push(col);
+        for (var y = 0; y < worldGrid[0].length; y++) {
+          col.push( worldGrid[x][y].getDyeAmounts());
+        }
+      }
+
+      return gridOfDyeAmounts;
+    }
+
     function createPaper(canvas){
         function addSolvent() {
           const maxIterations = 100;
@@ -220,7 +282,8 @@
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.step();
-            DYES.writeGridOfDyeAmountsToImageData(world.grid, imageData);
+            let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world.grid);
+            DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
             context.putImageData(imageData, 0, 0);
 
             numIterations = numIterations + 1;
