@@ -41,17 +41,22 @@
       },
     ];
 
-    DYES.RGBMinimum = 0.01;
+    DYES.RGBMaximum = 200;
 
     DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
       // use A to dilute dye amounts
       // assume full white [255,255,255], or full transparent, has no dyes at all
+      // clip (to full transparent) if min RGB > threshold
       // return array of dye amounts, min 0, max 1.0
 
       var dyeAmounts = new Array(this.length);
 
-      if ( rgba[3]==0 || (rgba[0]==255 && rgba[1]==255 && rgba[2]==255)) {
+      if ( rgba[3]==0 ) {
+        dyeAmounts.fill(0);
+      } else if (rgba[0]==255 && rgba[1]==255 && rgba[2]==255) {
+        dyeAmounts.fill(0);
+      } else if (Math.min(rgba[0], rgba[1], rgba[2]) >= this.RGBMaximum ){
         dyeAmounts.fill(0);
       } else {
         for (var d = 0; d < this.length; d++) {
@@ -68,50 +73,40 @@
 
     DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
       // return [R, G, B, A]
-      // assume no dyes => full white
+      // assume no dyes => full transparent
 
-      var rgba = new Array(4); // calc 0-1.0 range, then convert to 0-255 later
+      // calc 0-1.0 range, then convert to 0-255 later
+      var rgba01 = new Array(3).fill(0);
 
-      const sumDyeAmounts = dyeAmounts.reduce(( acc, cur ) => acc + cur, 0);
-      if (sumDyeAmounts == 0) {
-        rgba.fill(1);
-      } else {
-        rgba.fill(0);
-        for (var d = 0; d < this.length; d++) {
-          for (var i = 0; i < 3; i++) {
-            rgba[i] = rgba[i] + (dyeAmounts[d] * this[d].RGBPattern[i]);
-          }
-        }
-
-        var anyRGBAboveMinimum = false;
+      for (var d = 0; d < this.length; d++) {
         for (var i = 0; i < 3; i++) {
-          anyRGBAboveMinimum = (rgba[i] > this.RGBMinimum);
-          if(anyRGBAboveMinimum){ break; }
-        }
-
-        if (anyRGBAboveMinimum) {
-          rgba[3] = 1;
-        } else {
-          rgba.fill(1);
+          rgba01[i] = rgba01[i] + (dyeAmounts[d] * this[d].RGBPattern[i]);
         }
       }
 
-      rgba = rgba.map(c => {return (c>1.0)? 255 : Math.floor(c * 255);});
+      var maxRGB01 = Math.max.apply(null, rgba01);
+      if (maxRGB01 > 1.0) {
+        rgba01 = rgba01.map(c => {return c/maxRGB01});
+        maxRGB01 = 1.0;
+      }
+      rgba01.push(maxRGB01);
+
+      var rgba = rgba01.map(c => {return (c>1.0)? 255 : Math.floor(c * 255);});
       return rgba;
     }
 
     {
       // test the conversion from RGBA Pixels to dyes, and back
       let testRgbaPixels = [
-        [ [  0,  0,  0,  0], [255,255,255,255], 'transparent --> white' ],
-        [ [ 10, 20, 30,  0], [255,255,255,255], 'transparent --> white' ],
-        [ [255,255,255,255], [255,255,255,255], 'white --> white' ],
+        [ [  0,  0,  0,  0], [  0,  0,  0,  0], 'transparent --> transparent' ],
+        [ [ 10, 20, 30,  0], [  0,  0,  0,  0], 'transparent --> transparent' ],
+        [ [255,255,255,255], [  0,  0,  0,  0], 'white --> transparent' ],
         [ [255,  0,  0,255], [255,  0,  0,255], 'full red --> full red' ],
         [ [  0,255,  0,255], [  0,255,  0,255], 'full green --> full green' ],
         [ [  0,  0,255,255], [  0,  0,255,255], 'full blue --> full blue' ],
         [ [255,255,  0,255], [255,255,  0,255], 'full red+green --> full red+green' ],
-        [ [ 10, 11, 12,255], [ 10, 11, 12,255], 'mix of RGB --> mix of RGB' ],
-        [ [ 10, 20, 30, 51], [  2,  4,  6,255], 'mix of RGB + weak A --> mix of RGD + full A'],
+        [ [ 10, 11, 12,255], [ 10, 11, 12, 12], 'mix of RGB --> mix of RGB, more transparent' ],
+        [ [ 10, 20, 30, 51], [  2,  4,  6,006], 'mix of RGB + weak A --> mix of RGB, more transparent'],
       ];
 
       for (var p = 0; p < testRgbaPixels.length; p++) {
@@ -184,8 +179,8 @@
             [255,255,255,255], [255,255,255,255]
             ],
             target: [
-            [255,255,255,255], [255,255,255,255],
-            [255,255,255,255], [255,255,255,255]
+            [  0,  0,  0,  0], [  0,  0,  0,  0],
+            [  0,  0,  0,  0], [  0,  0,  0,  0]
             ],
             desc: 'all white --> all white'
           },
@@ -195,8 +190,8 @@
               [  0,  0,  0,255], [  0,  0,  0,  0]
             ],
             target: [
-              [255,255,255,255], [255,255,255,255],
-              [255,255,255,255], [255,255,255,255]
+              [  0,  0,  0,  0], [  0,  0,  0,  0],
+              [  0,  0,  0,  0], [  0,  0,  0,  0]
             ],
             desc: 'mix of non-color --> all white'
           },
@@ -206,8 +201,8 @@
               [100,100,100,255], [255,255,255,255]
             ],
             target: [
-              [ 10, 11, 12,255], [255,254,253,255],
-              [100,100,100,255], [255,255,255,255]
+              [ 10, 11, 12, 12], [  0,  0,  0,  0],
+              [100,100,100,100], [  0,  0,  0,  0]
             ],
             desc: 'mix of colors + full A --> mix of colors + full A'
           },
@@ -215,7 +210,7 @@
 
       for (var t = 0; t < testDatas.length; t++) {
         if (testDatas[t].from.length !== testDatas[t].target.length) {
-          throw new Error("ERROR: in testing Grid Conversion: inconsistent from and target datas: t=${t}, testDatas[t]=${testDatas[t]}");
+          throw new Error(`ERROR: in testing Grid Conversion: ${testDatas[t].desc}: inconsistent from and target datas: t=${t}, testDatas[t]=${testDatas[t]}`);
         }
         // create imageData
         var fromImageData = testContext.createImageData(width, height);
@@ -242,7 +237,7 @@
             let pixelIndex = 4 * xywidth;
             for (var i = 0; i < 4; i++) {
               if (outputData[pixelIndex + i] !== targetData[xywidth][i]) {
-                throw new Error(`ERROR: in testing Grid Conversion: x=${x}, y=${y}, i=${i},
+                throw new Error(`ERROR: in testing Grid Conversion: ${testDatas[t].desc}: x=${x}, y=${y}, i=${i},
       outputData[pixelIndex + i]=${outputData[pixelIndex + i]},
       targetData[xywidth][i]=${targetData[xywidth][i]},
       outputData=${outputData},
