@@ -267,17 +267,17 @@
     		process: function (neighbors) {
           // do clever flow stuff here
 
-          // for (var d = 0; d < DYES.length; d++) {
-          //   this.next[d] = this.value[d] * (1 - DYES[d].Rf);
-          //   if (neighbors[world.TOP.index] !== null) {
-          //     this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
-          //   }
-          // }
-
-          // experiment with simple fading
           for (var d = 0; d < DYES.length; d++) {
             this.next[d] = this.value[d] * (1 - DYES[d].Rf);
+            if (neighbors[world.TOP.index] !== null) {
+              this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
+            }
           }
+
+          // // experiment with simple fading
+          // for (var d = 0; d < DYES.length; d++) {
+          //   this.next[d] = this.value[d] * (1 - DYES[d].Rf);
+          // }
 
     			return true;
     		},
