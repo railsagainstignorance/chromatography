@@ -23,20 +23,20 @@
     const DYES = [
       {
         name: 'red',
-          Rf: 0.1,  // propensity to go with the flow
-          Rd: 0.1, // propensity to 'bleed' if no flow
+          Rf: 0.2,  // propensity to go with the flow
+          Rd: 0.07, // propensity to 'bleed' if no flow
           RGBPattern: [1.0, 0, 0], // how to read it's value from/to RGB triple
       },
       {
         name: 'green',
-          Rf: 0.08,
+          Rf: 0.3,
           Rd: 0.075,
           RGBPattern: [0, 1.0, 0],
       },
       {
         name: 'blue',
-          Rf: 0.05,
-          Rd: 0.11,
+          Rf: 0.4,
+          Rd: 0.06,
           RGBPattern: [0, 0, 1.0],
       },
     ];
@@ -54,7 +54,7 @@
     }
 
     DYES.RGBMaximum = 253;
-    DYES.volumeMultiplier = 3.0;
+    DYES.volumeMultiplier = 10.0;
 
     DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
@@ -346,7 +346,7 @@
 
     function createPaper(canvas){
         function addSolvent() {
-          const maxIterations = 100;
+          const maxIterations = 1000;
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
