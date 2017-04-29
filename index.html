@@ -164,7 +164,7 @@
 
       // specify test imageData examples
 
-      var testImageDatas = [
+      var testDatas = [
           {
             from: [
             [255,255,255,255], [255,255,255,255],
@@ -175,16 +175,41 @@
             [255,255,255,255], [255,255,255,255]
             ],
             desc: 'all white --> all white'
-          }
+          },
+          {
+            from: [
+              [255,255,255,  0], [ 10, 11, 12,  0],
+              [  0,  0,  0,255], [  0,  0,  0,  0]
+            ],
+            target: [
+              [255,255,255,255], [255,255,255,255],
+              [255,255,255,255], [255,255,255,255]
+            ],
+            desc: 'mix of non-color --> all white'
+          },
+          {
+            from: [
+              [ 10, 11, 12,255], [255,254,253,255],
+              [100,100,100,255], [255,255,255,255]
+            ],
+            target: [
+              [ 10, 11, 12,255], [255,254,253,255],
+              [100,100,100,255], [255,255,255,255]
+            ],
+            desc: 'mix of colors + full A --> mix of colors + full A'
+          },
       ];
 
-      for (var t = 0; t < testImageDatas.length; t++) {
+      for (var t = 0; t < testDatas.length; t++) {
+        if (testDatas[t].from.length !== testDatas[t].target.length) {
+          throw new Error("ERROR: in testing Grid Conversion: inconsistent from and target datas: t=${t}, testDatas[t]=${testDatas[t]}");
+        }
         // create imageData
         var fromImageData = testContext.createImageData(width, height);
         var data = fromImageData.data;
         for (var p = 0; p < numPixels; p++) {
           for (var i = 0; i < 4; i++) {
-            data[(4 * p) + i] = testImageDatas[t].from[p][i];
+            data[(4 * p) + i] = testDatas[t].from[p][i];
           }
         }
         // convert to dye amounts
@@ -195,14 +220,20 @@
         if (fromImageData.data.length !== outputImageData.data.length) {
           throw new Error(`ERROR: in testing Grid Conversion: fromImageData.data.length(${fromImageData.data.length}) !== outputImageData.data.length(${outputImageData.data.length})`);
         }
-        var targetImageData = testImageDatas[t].target;
+        var outputData = outputImageData.data;
+        var targetData = testDatas[t].target;
         // compare pixels
         for (var x = 0; x < width; x++) {
           for (var y = 0; y < height; y++) {
-            let pixelIndex = 4 * (x + (y * width));
+            let xywidth = (x + (y * width));
+            let pixelIndex = 4 * xywidth;
             for (var i = 0; i < 4; i++) {
-              if (fromImageData[pixelIndex + i] !== outputImageData[pixelIndex + i]) {
-                throw new Error(`ERROR: in testing Grid Conversion: x=${x}, y=${y}, i=${i}, fromImageData[pixelIndex + i]=${fromImageData[pixelIndex + i]}, outputImageData[pixelIndex + i]=${outputImageData[pixelIndex + i]}, fromImageData=${fromImageData}, outputImageData=${outputImageData}`);
+              if (outputData[pixelIndex + i] !== targetData[xywidth][i]) {
+                throw new Error(`ERROR: in testing Grid Conversion: x=${x}, y=${y}, i=${i},
+      outputData[pixelIndex + i]=${outputData[pixelIndex + i]},
+      targetData[xywidth][i]=${targetData[xywidth][i]},
+      outputData=${outputData},
+      targetData=${targetData}`);
               }
             }
           }
