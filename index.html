@@ -314,9 +314,10 @@
     			return true;
     		},
     		reset: function () {
+          let oldPrev = this.prev; // don't discard array
   				this.prev  = this.value;
   				this.value = this.next;
-          this.next  = this.next.slice(0);
+          this.next  = oldPrev;
     			return true;
     		}
     	}, function (x,y) {
