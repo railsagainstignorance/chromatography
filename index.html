@@ -347,9 +347,8 @@
       return gridOfDyeAmounts;
     }
 
-    function createPaper(canvas){
+    function createPaper(canvas, maxIterations=100){
         function addSolvent() {
-          const maxIterations = 100;
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
@@ -396,43 +395,53 @@
     <canvas class="blotting-paper" id="myCanvas" width="400" height="400"></canvas>
 
   <script>
-    var codeVersion = '2-0';
-    var canvas = document.getElementById('myCanvas');
-    var context = canvas.getContext('2d');
+  (function(){
+    const codeVersion = '2-0'; // affects filename of recording
+    const maxIterations = 10;
 
-    var frameRate = 15;
-    var stream = canvas.captureStream(frameRate);
-    var mimeType = 'video/webm';
-    var options = {mimeType: mimeType};
-    var mediaRecorder = new MediaRecorder(stream, options);
-    mediaRecorder.ondataavailable = download;
-    mediaRecorder.start();
-    window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
-    var recordedFile = `chromatography-experiment.${codeVersion}.webm`;
-    function download(event) {
-      var videoData = [ event.data ];
-      var blob = new Blob(videoData, {
-        type: mimeType
-      });
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement('a');
-      document.body.appendChild(a);
-      a.style = 'display: none';
-      a.href = url;
-      a.download = recordedFile;
-      a.click();
-      window.URL.revokeObjectURL(url);
+    const canvas = document.getElementById('myCanvas');
+    const context = canvas.getContext('2d');
+
+    {
+      /* set up the recording of the canvas animations */
+      const frameRate = 15;
+      const stream = canvas.captureStream(frameRate);
+      const mimeType = 'video/webm';
+      const options = {mimeType: mimeType};
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.ondataavailable = download;
+      mediaRecorder.start();
+      window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
+      const recordedFile = `chromatography-experiment.${codeVersion}.webm`;
+      function download(event) {
+        const videoData = [ event.data ];
+        const blob = new Blob(videoData, {
+          type: mimeType
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.href = url;
+        a.download = recordedFile;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
     }
 
-    var imageObj = new Image();
+    {
+      /* start the CA when the image has loaded */
+      const imageObj = new Image();
 
-    imageObj.onload = function() {
-      context.drawImage(imageObj, 0, 0);
-      var paper = Chroma.create(canvas);
-      window.setTimeout(paper.run, 100);
-    };
-    // imageObj.src = 'assets/profile_400x400.jpg';
-    imageObj.src = 'assets/splodge.png';
+      imageObj.onload = function() {
+        context.drawImage(imageObj, 0, 0);
+        var paper = Chroma.create(canvas, maxIterations);
+        window.setTimeout(paper.run, 100);
+      };
+      // imageObj.src = 'assets/profile_400x400.jpg';
+      imageObj.src = 'assets/splodge.png';
+    }
+  })();
   </script>
 </body>
 </html>
