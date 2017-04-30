@@ -202,7 +202,10 @@
     CAWorld.prototype.addDroplets = function(spotsWithCoords) {
       for (spot of spotsWithCoords) {
         var cell = this.grid[spot.y][spot.x];
-        cell.reset();
+        if (! cell) {
+          console.log(`DEBUG: CAWorld.prototype.addDroplets: spot.x=${spot.x}, spot.y=${spot.y}, this.height=${this.height}, this.width=${this.width}`);
+        }
+        // cell.reset();
         var cellSpot = cell.value;
         cellSpot.addDroplet(spot.droplet);
       }
@@ -214,7 +217,7 @@
 
     CAWorld.prototype.addBigDrop = function(centreX, centreY, r, waterSpot) {
       const fromX = Math.floor( Math.max(centreX - r, 0));
-      const   toX = Math.floor( Math.min(centreX + r, this.height));
+      const   toX = Math.floor( Math.min(centreX + r, this.height-1));
       const fromY = Math.floor( Math.max(centreY - r, 0));
       const   toY = Math.floor( Math.min(centreY + r, this.width-1));
 
