@@ -371,7 +371,7 @@
               window.requestAnimationFrame(iterateAndDisplayWorld);
             } else {
               console.log(`ending on world iteration=${numIterations} of ${maxIterations}`);
-              mediaRecorder.stop();
+              window.dispatchEvent( new Event('StopRecording') );
             }
           }
 
@@ -396,6 +396,7 @@
     <canvas class="blotting-paper" id="myCanvas" width="400" height="400"></canvas>
 
   <script>
+    var codeVersion = '2-0';
     var canvas = document.getElementById('myCanvas');
     var context = canvas.getContext('2d');
 
@@ -406,7 +407,8 @@
     var mediaRecorder = new MediaRecorder(stream, options);
     mediaRecorder.ondataavailable = download;
     mediaRecorder.start();
-    var recordedFile = 'chromatography-experiment.webm';
+    window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
+    var recordedFile = `chromatography-experiment.${codeVersion}.webm`;
     function download(event) {
       var videoData = [ event.data ];
       var blob = new Blob(videoData, {
