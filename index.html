@@ -356,7 +356,10 @@
           const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, gridOfDyeAmounts);
           console.log(`world.width=${world.width}, world.height=${world.height}`);
 
-          var numIterations=1;
+          let numIterations=1;
+          let batchSize = 5;
+          const startOverallRunTimeMillis = Date.now();
+          let   startBatchRunTimeMillis   = Date.now();
 
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
@@ -365,11 +368,20 @@
             DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
             context.putImageData(imageData, 0, 0);
 
+            if (numIterations % batchSize == 0) {
+              let nowMillis = Date.now();
+              let rate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
+              console.log(`iteration=${numIterations}, frames/s=${rate.toFixed(2)}`);
+              startBatchRunTimeMillis = nowMillis;
+            }
+
             numIterations = numIterations + 1;
             if (numIterations < maxIterations) {
               window.requestAnimationFrame(iterateAndDisplayWorld);
             } else {
-              console.log(`ending on world iteration=${numIterations} of ${maxIterations}`);
+              let nowMillis = Date.now();
+              let rate = (numIterations - 1) / ((nowMillis - startOverallRunTimeMillis) / 1000);
+              console.log(`ending on world iteration=${numIterations} of ${maxIterations}, frames/s=${rate.toFixed(2)}`);
               window.dispatchEvent( new Event('StopRecording') );
             }
           }
