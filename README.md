@@ -3,6 +3,56 @@ experimenting with modelling the physics of chromatography in-browser
 
 Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stumbling on [cellauto](http://sanojian.github.io/cellauto/), I fancied a crack at trying to model the physics of chromatography more closely, to see if we could achieve, in-browser, something as lovely as the [FT Labs logo](http://labs.ft.com).
 
+## The plan - part 2
+
+Well, got something interesting happening, but was hampered by physics of colours, and lack of knowledge thereof, inadequacies of my javascripting.
+
+The easy bit, it turned out, was the physics of dyes flowing through wet paper. The cellular automata is flexible enough to handle lots of possibilities.
+
+Having had a think, was perhaps distracted by
+* the starting point, "an image, ideally of bright, sharp colours", and spent too much time trying to achieve a realistic mapping from there into the physics of inks/dyes and subtractive colours.
+* the idea of chromatography strips, where the water flows from one end to the other via capillary action, picking up the dyes as it goes.
+
+I'm looking to return to re-imagining the labs splodges, which are more about dollops of wet ink dropped onto dry paper.
+
+So, attempt 2 might well start with a blank, white, paper and modeling
+* dropping dollops of wet ink on there
+* possibly dropping dollops of water
+
+This will involve
+* throwing away the pixels-to-ink code
+* modeling water in the CA
+   * possibly two modes
+      * within the paper (capillary action, aka good old chromatography), possibly drying out
+      * on top of the paper (aka spillages, ultimately absorbed into the paper)
+* modelling blemishes/inconsistencies in the paper
+   * lumpy surface, affecting the spillages
+   * different absorption characteristics, affecting the capillary action
+*  Q:
+   * can the water running on top of the paper pick up some of the dye?
+   * evaporation?
+   * if multiple waterspots combine, do all the dyes mix?
+   * how to visualize an 'active' water spot?
+   * what if there is too much dye in the paper? i.e. not just the water.
+* tackling the thorny issue of translating from ink/dyes subtractive colour to RGBA for display.
+
+### steps
+
+* focus on defining a CA cell class (perhaps using the Revealing Prototype patterns. hoohaa!), to be manipulated within the CA
+   * an obj with
+      * specific amounts of the various known dyes
+        * possibly in amounts in different states, e.g. wet and dry
+      * specific amounts of water
+        * probably in different states, each carrying different amounts of dye
+           * absorbed into the paper,
+           * free-flowing on surface
+      * awareness of how it flows between neighbours
+         * (?) not sure if this would be better here or in the CA
+      * max holding capacity for water,
+         * e.g. the paper can't absorb more than a certain amount, and will continue to flow on the surface
+
+...
+
 ## The plan - Part 1
 
 ### prep
@@ -42,30 +92,3 @@ Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stu
    * regenerate an image from the resultant dye amounts
    * gasp in wonder at the colourful splodges
    * twiddle the 1000s of params and try again
-
-## The plan - part 2
-
-Well, got something interesting happening, but was hampered by physics of colours, and lack of knowledge thereof.
-
-The easy bit, it turned out, was the physics of dyes flowing through wet paper. The cellular automata is flexible enough to handle lots of possibilities.
-
-Having had a think, was perhaps distracted by
-* the starting point, "an image, ideally of bright, sharp colours", and spent too much time trying to achieve a realistic mapping from there into the physics of inks/dyes and subtractive colours.
-* the idea of chromatography strips, where the water flows from one end to the other via capillary action, picking up the dyes as it goes.
-
-I'm looking to return to re-imagining the labs splodges, which are more about dollops of wet ink dropped onto dry paper.
-
-So, attempt 2 might well start with a blank, white, paper and modeling
-* dropping dollops of wet ink on there
-* possibly dropping dollops of water
-
-This will involve
-* throwing away the pixels-to-ink code
-* modeling water in the CA
-   * possibly two modes
-      * within the paper (capillary action, aka good old chromatography), possibly drying out
-      * on top of the paper (aka spillages, ultimately absorbed into the paper)
-* modelling blemishes/inconsistencies in the paper
-   * lumpy surface, affecting the spillages
-   * different absorption characteristics, affecting the capillary action
-* tackling the thorny issue of translating from ink/dyes subtractive colour to RGBA for display. 

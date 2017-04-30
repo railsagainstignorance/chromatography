@@ -58,6 +58,10 @@
     DYES.RGBMaximum = 253;
     DYES.volumeMultiplier = 10.0;
 
+    DYES.newEmptyDyeAmounts = function() {
+      return new Array(this.length).fill(0);
+    }
+
     DYES.splitRgbaPixelIntoDyes = function(rgba) {
       // assume rgba is [R,G,B, A], each 0-255
       // use A to dilute dye amounts
@@ -65,14 +69,14 @@
       // clip (to full transparent) if min RGB > threshold
       // return array of dye amounts, min 0, max 1.0
 
-      var dyeAmounts = new Array(this.length);
+      var dyeAmounts = DYES.newEmptyDyeAmounts();
 
       if ( rgba[3]==0 ) {
-        dyeAmounts.fill(0);
+        // do nothing
       } else if (rgba[0]==255 && rgba[1]==255 && rgba[2]==255) {
-        dyeAmounts.fill(0);
+        // do nothing
       } else if (Math.min(rgba[0], rgba[1], rgba[2]) >= this.RGBMaximum ){
-        dyeAmounts.fill(0);
+        // do nothing
       } else {
         for (var d = 0; d < this.length; d++) {
           let tot = 0;
@@ -265,6 +269,42 @@
         }
       }
     }
+
+    //------------
+
+    var PaperSpot = function(dyeAmounts, waterAmount){
+      this.dyeAmounts  =  (dyeAmounts)? dyeAmounts.slice(0) : DYES.newEmptyDyeAmounts();
+      this.waterAmount = (waterAmount)?        waterAmounts : 0;
+    }
+
+    PaperSpot.prototype = (function () {
+      /* private members */
+
+      /* public members */
+      return {
+           MaxWaterCapacity: 1,
+        WaterAbsorptionRate: 0.1,
+                      clone: function(){ return new Paperspot(this.dyeAmounts, this.waterAmount); },
+      };
+    })();
+
+    //------------
+
+    var WaterSpot = function(waterAmount, dyeAmounts){
+      this.waterAmount = (waterAmount)?         waterAmount : 0;
+      this.dyeAmounts  =  (dyeAmounts)? dyeAmounts.slice(0) : DYES.newEmptyDyeAmounts();
+    }
+
+    WaterSpot.prototype = (function(){
+      /* private members */
+
+      /* public members */
+      return {
+        clone: function(){ return new WaterSpot(this.waterAmount, this.dyeAmounts); },
+      };
+    })();
+
+    //------------
 
     function createWorldOfBlottingPaperAndDyes(width, height, gridOfDyeAmounts) {
     	world = new CAWorld({
