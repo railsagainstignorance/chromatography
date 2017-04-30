@@ -404,16 +404,10 @@
 
     {
       /* set up the recording of the canvas animations */
-      const frameRate = 15;
-      const stream = canvas.captureStream(frameRate);
-      const mimeType = 'video/webm';
+      const mimeType = 'video/webm'; // couldn't find a different format which worked, e.g. mp4.
       const options = {mimeType: mimeType};
-      const mediaRecorder = new MediaRecorder(stream, options);
-      mediaRecorder.ondataavailable = download;
-      mediaRecorder.start();
-      window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
       const recordedFile = `chromatography-experiment.${codeVersion}.webm`;
-      function download(event) {
+      function download(event) { // receives the recorded data, and writes to file using a url hack. Ick.
         const videoData = [ event.data ];
         const blob = new Blob(videoData, {
           type: mimeType
@@ -427,6 +421,12 @@
         a.click();
         window.URL.revokeObjectURL(url);
       }
+      const frameRate = 15;
+      const stream = canvas.captureStream(frameRate);
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.ondataavailable = download;
+      mediaRecorder.start();
+      window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
     }
 
     {
