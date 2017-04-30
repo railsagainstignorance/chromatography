@@ -56,39 +56,9 @@
     }
 
     DYES.RGBMaximum = 253;
-    DYES.volumeMultiplier = 10.0;
 
     DYES.newEmptyDyeAmounts = function() {
       return new Array(this.length).fill(0);
-    }
-
-    DYES.splitRgbaPixelIntoDyes = function(rgba) {
-      // assume rgba is [R,G,B, A], each 0-255
-      // use A to dilute dye amounts
-      // assume full white [255,255,255], or full transparent, has no dyes at all
-      // clip (to full transparent) if min RGB > threshold
-      // return array of dye amounts, min 0, max 1.0
-
-      var dyeAmounts = DYES.newEmptyDyeAmounts();
-
-      if ( rgba[3]==0 ) {
-        // do nothing
-      } else if (rgba[0]==255 && rgba[1]==255 && rgba[2]==255) {
-        // do nothing
-      } else if (Math.min(rgba[0], rgba[1], rgba[2]) >= this.RGBMaximum ){
-        // do nothing
-      } else {
-        for (var d = 0; d < this.length; d++) {
-          let tot = 0;
-          for (var i = 0; i < 3; i++) {
-            tot = tot + (rgba[i] * this[d].RGBPattern[i] / 255);
-          }
-          tot = tot * (rgba[3] / 255);
-          // dyeAmounts[d] = Math.min(tot, 1.0);
-          dyeAmounts[d] = tot;
-        }
-      }
-      return dyeAmounts;
     }
 
     DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
@@ -115,58 +85,11 @@
       return rgba;
     }
 
-    {
-      // test the conversion from RGBA Pixels to dyes, and back
-      let testRgbaPixels = [
-        [ [  0,  0,  0,  0], [  0,  0,  0,  0], 'transparent --> transparent' ],
-        [ [ 10, 20, 30,  0], [  0,  0,  0,  0], 'transparent --> transparent' ],
-        [ [255,255,255,255], [  0,  0,  0,  0], 'white --> transparent' ],
-        [ [255,  0,  0,255], [255,  0,  0,255], 'full red --> full red' ],
-        [ [  0,255,  0,255], [  0,255,  0,255], 'full green --> full green' ],
-        [ [  0,  0,255,255], [  0,  0,255,255], 'full blue --> full blue' ],
-        [ [255,255,  0,255], [255,255,  0,255], 'full red+green --> full red+green' ],
-        [ [ 10, 11, 12,255], [ 10, 11, 12, 12], 'mix of RGB --> mix of RGB, more transparent' ],
-        [ [ 10, 20, 30, 51], [  2,  4,  6,006], 'mix of RGB + weak A --> mix of RGB, more transparent'],
-      ];
-
-      for (var p = 0; p < testRgbaPixels.length; p++) {
-        let fromPixel = testRgbaPixels[p][0];
-        let toPixel   = testRgbaPixels[p][1];
-        let dyeAmounts = DYES.splitRgbaPixelIntoDyes( fromPixel );
-        let outputPixel  = DYES.combineDyesIntoRgbaPixel( dyeAmounts );
-        for (var i = 0; i < fromPixel.length; i++) {
-          if (toPixel[i] !== outputPixel[i]) {
-            throw new Error(`Error: in testing Dye Conversion: converting pixel to dyes and back: ${testRgbaPixels[p][2]}: fromPixel=${fromPixel}, toPixel=${toPixel}, but outputPixel=${outputPixel}, and dyeAmounts=${dyeAmounts}`);
-          }
-        }
-      }
-    }
-
-    DYES.convertImageDataIntoGridOfDyeAmounts = function(imageData, volumeMultiplier=1.0){
-      const data = imageData.data;
-      const grid = [];
-
-      for (var x = 0; x < imageData.width; x++) {
-        let col = [];
-        grid.push(col);
-        for (var y = 0; y < imageData.height; y++) {
-          let imageDataCellIndex = 4 * (x + (y * imageData.width));
-          let rgba = data.slice(imageDataCellIndex, imageDataCellIndex + 4);
-          let dyeAmounts = this.splitRgbaPixelIntoDyes(rgba);
-          dyeAmounts = dyeAmounts.map(da => { return da * volumeMultiplier; });
-          col.push(dyeAmounts);
-        }
-      }
-
-      return grid;
-    }
-
     DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData){
       if ((imageData.width !== grid.length) || (imageData.height !== grid[0].length)) {
         throw new Error(`Error: mismatch found between size of grid and imageData`);
       }
       const data = imageData.data;
-
       for (var x=0; x<imageData.width; x++) {
         for (var y=0; y<imageData.height; y++) {
           var dyeAmounts = grid[x][y];
@@ -177,97 +100,7 @@
           }
         }
       }
-
       return imageData;
-    }
-
-    {
-      // test conversion imagaData into grid of dye amounts, and back
-      var height = 2;
-      var width  = 2;
-      var numPixels = width * height;
-      var testCanvas = document.createElement('canvas');
-      testCanvas.width = width;
-      testCanvas.height = height;
-      var testContext = testCanvas.getContext('2d');
-
-      // specify test imageData examples
-
-      var testDatas = [
-          {
-            from: [
-            [255,255,255,255], [255,255,255,255],
-            [255,255,255,255], [255,255,255,255]
-            ],
-            target: [
-            [  0,  0,  0,  0], [  0,  0,  0,  0],
-            [  0,  0,  0,  0], [  0,  0,  0,  0]
-            ],
-            desc: 'all white --> all white'
-          },
-          {
-            from: [
-              [255,255,255,  0], [ 10, 11, 12,  0],
-              [  0,  0,  0,255], [  0,  0,  0,  0]
-            ],
-            target: [
-              [  0,  0,  0,  0], [  0,  0,  0,  0],
-              [  0,  0,  0,  0], [  0,  0,  0,  0]
-            ],
-            desc: 'mix of non-color --> all white'
-          },
-          {
-            from: [
-              [ 10, 11, 12,255], [255,254,253,255],
-              [100,100,100,255], [255,255,255,255]
-            ],
-            target: [
-              [ 10, 11, 12, 12], [  0,  0,  0,  0],
-              [100,100,100,100], [  0,  0,  0,  0]
-            ],
-            desc: 'mix of colors + full A --> mix of colors + full A'
-          },
-      ];
-
-      for (var t = 0; t < testDatas.length; t++) {
-        if (testDatas[t].from.length !== testDatas[t].target.length) {
-          throw new Error(`ERROR: in testing Grid Conversion: ${testDatas[t].desc}: inconsistent from and target datas: t=${t}, testDatas[t]=${testDatas[t]}`);
-        }
-        // create imageData
-        var fromImageData = testContext.createImageData(width, height);
-        var data = fromImageData.data;
-        for (var p = 0; p < numPixels; p++) {
-          for (var i = 0; i < 4; i++) {
-            data[(4 * p) + i] = testDatas[t].from[p][i];
-          }
-        }
-        // convert to dye amounts
-        var gridOfDyeAmounts = DYES.convertImageDataIntoGridOfDyeAmounts(fromImageData);
-        // convert to imageData
-        var outputImageData = DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, testContext.createImageData(width, height));
-        // compare
-        if (fromImageData.data.length !== outputImageData.data.length) {
-          throw new Error(`ERROR: in testing Grid Conversion: fromImageData.data.length(${fromImageData.data.length}) !== outputImageData.data.length(${outputImageData.data.length})`);
-        }
-        var outputData = outputImageData.data;
-        var targetData = testDatas[t].target;
-        // compare pixels
-        for (var x = 0; x < width; x++) {
-          for (var y = 0; y < height; y++) {
-            let xywidth = (x + (y * width));
-            let pixelIndex = 4 * xywidth;
-            for (var i = 0; i < 4; i++) {
-              if (outputData[pixelIndex + i] !== targetData[xywidth][i]) {
-                throw new Error(`ERROR: in testing Grid Conversion: ${testDatas[t].desc}: x=${x}, y=${y}, i=${i},
-      outputData[pixelIndex + i]=${outputData[pixelIndex + i]},
-      targetData[xywidth][i]=${targetData[xywidth][i]},
-      outputData=${outputData},
-      targetData=${targetData}`);
-              }
-            }
-          }
-        }
-      }
     }
 
     //------------
@@ -285,6 +118,9 @@
            MaxWaterCapacity: 1,
         WaterAbsorptionRate: 0.1,
                       clone: function(){ return new Paperspot(this.dyeAmounts, this.waterAmount); },
+                prettyPrint: function(){
+                        return `PaperSpot:{ dyeAmounts : [${this.dyeAmounts}], waterAmount : ${this.waterAmount} }`;
+                      }
       };
     })();
 
@@ -300,13 +136,105 @@
 
       /* public members */
       return {
-        clone: function(){ return new WaterSpot(this.waterAmount, this.dyeAmounts); },
+             clone: function() { return new WaterSpot(this.waterAmount, this.dyeAmounts); },
+        addDroplet: function(drop){
+           this.waterAmount = this.waterAmount + drop.waterAmount;
+           for (var i = 0; i < this.dyeAmounts.length; i++) {
+             this.dyeAmounts[i] = this.dyeAmounts[i] + drop.dyeAmounts[i];
+           }
+           return this;
+         },
+         divideBy: function(n){
+          this.waterAmount = this.waterAmount/n;
+          for (var i = 0; i < this.dyeAmounts.length; i++) {
+            this.dyeAmounts[i] = this.dyeAmounts[i] / n;
+          }
+          return this;
+        },
+        prettyPrint: function(){
+          return `WaterSpot:{ waterAmount : ${this.waterAmount}, dyeAmounts : [${this.dyeAmounts}]}`;
+        },
+      };
+    })();
+
+    WaterSpot.createBigRedDrop = function() {
+      const waterAmount = 1000.0;
+      const dyeAmounts = DYES.newEmptyDyeAmounts();
+      dyeAmounts[0] = 3000.0;
+      const drop = new WaterSpot(waterAmount, dyeAmounts);
+      return drop;
+    }
+
+    //------------
+
+    var CellSpot = function(paperSpot, waterSpot){
+      this.paperSpot = (paperSpot)? paperSpot.clone() : new PaperSpot();
+      this.waterSpot = (waterSpot)? waterSpot.clone() : new WaterSpot();
+    }
+
+    CellSpot.prototype = (function(){
+      /* private members */
+
+      /* public members */
+      return {
+              clone: function(){ return new CellSpot(this.paperSpot, this.waterSpot); },
+         addDroplet: function(drop){ this.waterSpot.addDroplet(drop); },
+        prettyPrint: function(){
+          return `CellSpot:{ paperSpot : ${this.paperSpot.prettyPrint()}, waterSpot : ${this.waterSpot.prettyPrint()}}`;
+        },
       };
     })();
 
     //------------
+    // accept a list of { x: , y: , droplet: }
+    // loop over the list, reset each cell and add to the cell.value
 
-    function createWorldOfBlottingPaperAndDyes(width, height, gridOfDyeAmounts) {
+    CAWorld.prototype.addDroplets = function(spotsWithCoords) {
+      for (spot of spotsWithCoords) {
+        var cell = this.grid[spot.y][spot.x];
+        cell.reset();
+        var cellSpot = cell.value;
+        cellSpot.addDroplet(spot.droplet);
+      }
+    };
+
+    //------------
+    // accept a centre x,y of a drop of radius r, containing full WaterSpot of ink+water.
+    // expand into a call to addDroplets
+
+    CAWorld.prototype.addBigDrop = function(centreX, centreY, r, waterSpot) {
+      const fromX = Math.floor( Math.max(centreX - r, 0));
+      const   toX = Math.floor( Math.min(centreX + r, this.height));
+      const fromY = Math.floor( Math.max(centreY - r, 0));
+      const   toY = Math.floor( Math.min(centreY + r, this.width-1));
+
+      const spotsWithCoords = [];
+
+      for (var x=fromX; x<=toX; x++) {
+        for (var y=fromY; y<=toY; y++) {
+          const dx = x - centreX;
+          const dy = y - centreY;
+
+          if ((dx*dx + dy*dy) <= r*r) {
+              spotsWithCoords.push({ x:x, y:y });
+          }
+        }
+      }
+
+      // assume waterSpot is divided equally between droplets
+      const numDroplets = spotsWithCoords.length;
+      const droplet = waterSpot.clone().divideBy(numDroplets);
+
+      spotsWithCoords.forEach(swc => {
+        swc.droplet = droplet.clone();
+      });
+
+      this.addDroplets(spotsWithCoords);
+    };
+
+    //------------
+
+    function createWorldOfBlottingPaperAndDyes(width, height) {
     	world = new CAWorld({
     		width: Math.floor(width),
     		height: Math.floor(height),
@@ -316,35 +244,45 @@
       world.bleedDirections = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
 
     	world.registerCellType('paper', {
-    		getDyeAmounts: function () {
+    		getCellValue: function () {
           return this.value;
     		},
     		process: function (neighbors) {
           // do clever flow stuff here
 
-          for (var d = 0; d < DYES.length; d++) {
-            const  flowAmount = this.value[d] * DYES[d].Rf * world.flowRate;
-            const bleedAmount = this.value[d] * DYES[d].Rd;
+          // starting with ...
+          // any water dye goes straight into the paper
 
-            this.next[d] = this.value[d];
+          const numDyes = this.value.paperSpot.dyeAmounts.length;
 
-            // some of this cell's dyes will flow to BOTTOM
-            if (neighbors[world.BOTTOM.index] !== null) {
-              this.next[d] = this.next[d] - flowAmount;
-            }
-            // this cell will receive a flow from TOP
-            if (neighbors[world.TOP.index] !== null) {
-              this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
-            }
-
-            // this cell will receive a bleed from, and bleed to, each of the directions
-            for( let direction of world.bleedDirections ){
-              if (neighbors[direction.index] !== null) {
-                this.next[d] = this.next[d] + (neighbors[direction.index].value[d] * DYES[d].Rd);
-                this.next[d] = this.next[d] - bleedAmount;
-              }
-            }
+          for (var i = 0; i < numDyes; i++) {
+            this.next.paperSpot.dyeAmounts[i] = this.value.paperSpot.dyeAmounts[i] + this.next.waterSpot.dyeAmounts[i];
+            this.next.waterSpot.dyeAmounts[i] = 0;
           }
+
+          // for (var d = 0; d < DYES.length; d++) {
+          //   const  flowAmount = this.value[d] * DYES[d].Rf * world.flowRate;
+          //   const bleedAmount = this.value[d] * DYES[d].Rd;
+          //
+          //   this.next[d] = this.value[d];
+          //
+          //   // some of this cell's dyes will flow to BOTTOM
+          //   if (neighbors[world.BOTTOM.index] !== null) {
+          //     this.next[d] = this.next[d] - flowAmount;
+          //   }
+          //   // this cell will receive a flow from TOP
+          //   if (neighbors[world.TOP.index] !== null) {
+          //     this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
+          //   }
+          //
+          //   // this cell will receive a bleed from, and bleed to, each of the directions
+          //   for( let direction of world.bleedDirections ){
+          //     if (neighbors[direction.index] !== null) {
+          //       this.next[d] = this.next[d] + (neighbors[direction.index].value[d] * DYES[d].Rd);
+          //       this.next[d] = this.next[d] - bleedAmount;
+          //     }
+          //   }
+          // }
 
           // // experiment with simple fading
           // for (var d = 0; d < DYES.length; d++) {
@@ -354,17 +292,17 @@
     			return true;
     		},
     		reset: function () {
-          let oldPrev = this.prev; // don't discard array
-  				this.prev  = this.value;
-  				this.value = this.next;
-          this.next  = oldPrev;
+          let oldPrev = this.prev; // don't discard the old value
+  				this.prev   = this.value;
+  				this.value  = this.next;
+          this.next   = oldPrev;   // assuming the old value gets fully overwritten
     			return true;
     		}
     	}, function (x,y) {
     		//init
-        this.value = gridOfDyeAmounts[y][x].slice(0);
-        this.prev = this.value.slice(0);
-    		this.next = this.value.slice(0);
+        this.value = new CellSpot();
+        this.prev  = new CellSpot();
+    		this.next  = new CellSpot();
     	});
 
     	world.initialize([
@@ -381,7 +319,7 @@
         var col = [];
         gridOfDyeAmounts.push(col);
         for (var y = 0; y < worldGrid[0].length; y++) {
-          col.push( worldGrid[x][y].getDyeAmounts());
+          col.push( worldGrid[x][y].getCellValue().paperSpot.dyeAmounts);
         }
       }
 
@@ -393,8 +331,7 @@
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          const gridOfDyeAmounts = DYES.convertImageDataIntoGridOfDyeAmounts(imageData, DYES.volumeMultiplier);
-          const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, gridOfDyeAmounts);
+          const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height);
           console.log(`world.width=${world.width}, world.height=${world.height}`);
 
           let numIterations=1;
@@ -426,6 +363,13 @@
               window.dispatchEvent( new Event('StopRecording') );
             }
           }
+
+          world.addBigDrop(
+            world.width  * Math.random(),
+            world.height * Math.random(),
+            10+(Math.random()*20),
+            WaterSpot.createBigRedDrop()
+          );
 
           iterateAndDisplayWorld();
         }
@@ -479,20 +423,13 @@
       const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorder.ondataavailable = download;
       mediaRecorder.start();
-      window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
+      // window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
     }
 
     {
-      /* start the CA when the image has loaded */
-      const imageObj = new Image();
-
-      imageObj.onload = function() {
-        context.drawImage(imageObj, 0, 0);
-        var paper = Chroma.create(canvas, maxIterations);
-        window.setTimeout(paper.run, 100);
-      };
-      // imageObj.src = 'assets/profile_400x400.jpg';
-      imageObj.src = 'assets/splodge.png';
+      // paper starts clean and dry
+      var paper = Chroma.create(canvas, maxIterations);
+      window.setTimeout(paper.run, 100);
     }
   })();
   </script>
