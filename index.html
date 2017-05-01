@@ -127,10 +127,10 @@
 
     PaperSpot.prototype = (function () {
       /* private members */
-
+      let maxWaterCapacity = 1;
       /* public members */
       return {
-           MaxWaterCapacity: 1,
+           MaxWaterCapacity: maxWaterCapacity,
         WaterAbsorptionRate: 0.1,
                       clone: function(){ return new Paperspot(this.dyeAmounts, this.waterAmount); },
                   stringify: function(){ return JSON.stringify(this); },
@@ -138,6 +138,13 @@
                          this.waterAmount = from.waterAmount;
                          DYES.copyAmounts(from.dyeAmounts, this.dyeAmounts);
                        },
+                 addDroplet: function(drop){
+                    this.waterAmount = Math.max(this.waterAmount + drop.waterAmount, maxWaterCapacity);
+                    for (var i = 0; i < this.dyeAmounts.length; i++) {
+                      this.dyeAmounts[i] = this.dyeAmounts[i] + drop.dyeAmounts[i];
+                    }
+                    return this;
+                  },
       };
     })();
 
@@ -286,9 +293,13 @@
 
       world.flowRate   = 1.0;
       world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
-      world.numDyes    = DYES.length;
       world.waterSpotFlowDownSlope = 0.5;
+      world.EvaporationFromPaperRate   = 0.01;
+      world.EvaporationFromSurfaceRate = 0.005;
+
       world.waterSpotLost = new WaterSpot();
+      world.waterEvaporationFromPaper   = new WaterSpot();
+      world.waterEvaporationFromSurface = new WaterSpot();
 
     	world.registerCellType('paper', {
     		getCellValue: function () {
@@ -307,6 +318,18 @@
             this.value=${this.value.stringify()},
             this.prev =${this.prev.stringify()}`);
           }
+
+          // The modelling works by examining the relative states of the .value versions,
+          // and implementing the changes in the .next version of this cell.
+          // There are two main types of changes:
+          // - this cell is pushing out to neighbours (and depleting its amounts)
+          // - this cell is receiving from neighbours (and increasing its amounts)
+          // They both need to be implemented when examining 'this' cell,
+          // so calculations are in effect done twice:
+          // - working out what this cell is to push to its neighbours
+          // - working out what the neighbours would push
+          // The calculations, add/remove of assorted resources, accumulate in the .next value,
+          // then the .next value is switched in to 'be' the current .value when 'reset' is invoked.
 
           // - some of the current surface water (plus the associated dyes) get absorbed
           //    - capacity of paper
@@ -439,38 +462,28 @@
           }
 
           // - paper will dry out as water evaporates
+          //    - assume will not evaporate from paper if water on surface
+          //    - for simplicity, apply evaporation to computed Next, otherwise needs to be included in all other calculations
+          //    - handle when there are dyes in surface water which fully evaporates
+
+          // if (thisNextWaterSpot.waterAmount > 0) {
+          //   let evapAmount = Math.min(thisNextWaterSpot.waterAmount, world.EvaporationFromSurfaceRate);
+          //   thisNextWaterSpot.waterAmount = thisNextWaterSpot.waterAmount - evapAmount;
+          //   world.waterEvaporationFromSurface.waterAmount = world.waterEvaporationFromSurface.waterAmount + evapAmount;
+          //   if (thisNextWaterSpot.waterAmount == 0) {
+          //     thisNextPaperSpot.addDroplet(thisNextWaterSpot);
+          //     thisNextWaterSpot.dyeAmounts.fill(0);
+          //   }
+          // }
+          // else
+          // if (thisNextPaperSpot.waterAmount > 0) {
+          //   let evapAmount = Math.min(thisNextPaperSpot.waterAmount, world.EvaporationFromPaperRate);
+          //   thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - evapAmount;
+          //   world.waterEvaporationFromPaper.waterAmount = world.waterEvaporationFromPaper.waterAmount + evapAmount;
+          // }
+
           // - colours will change when wet/dry
           // - if dry, nothing will flow from this cell
-
-
-          // for (var d = 0; d < DYES.length; d++) {
-          //   const  flowAmount = this.value[d] * DYES[d].Rf * world.flowRate;
-          //   const bleedAmount = this.value[d] * DYES[d].Rd;
-          //
-          //   this.next[d] = this.value[d];
-          //
-          //   // some of this cell's dyes will flow to BOTTOM
-          //   if (neighbors[world.BOTTOM.index] !== null) {
-          //     this.next[d] = this.next[d] - flowAmount;
-          //   }
-          //   // this cell will receive a flow from TOP
-          //   if (neighbors[world.TOP.index] !== null) {
-          //     this.next[d] = this.next[d] + (neighbors[world.TOP.index].value[d] * DYES[d].Rf);
-          //   }
-          //
-          //   // this cell will receive a bleed from, and bleed to, each of the directions
-          //   for( let direction of world.bleedDirections ){
-          //     if (neighbors[direction.index] !== null) {
-          //       this.next[d] = this.next[d] + (neighbors[direction.index].value[d] * DYES[d].Rd);
-          //       this.next[d] = this.next[d] - bleedAmount;
-          //     }
-          //   }
-          // }
-
-          // // experiment with simple fading
-          // for (var d = 0; d < DYES.length; d++) {
-          //   this.next[d] = this.value[d] * (1 - DYES[d].Rf);
-          // }
 
           if (DEBUGX1Y1) {
             console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), final next,
@@ -543,14 +556,23 @@
           DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
           DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
           DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
-          const waterAmountTotal = waterAmountInPaper + waterAmountOnSurface + world.waterSpotLost.waterAmount;
-          const dyeAmountTotal   = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
+          const dyeAmountTotal = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
+
+          const waterAmountTotal = [
+            waterAmountInPaper,
+            waterAmountOnSurface,
+            world.waterSpotLost.waterAmount,
+            world.waterEvaporationFromPaper.waterAmount,
+            world.waterEvaporationFromSurface.waterAmount
+          ].reduce( (prev, curr) => prev + curr );
 
           return {
             waterAmountTotal    : waterAmountTotal,
             waterAmountInPaper  : waterAmountInPaper,
             waterAmountOnSurface: waterAmountOnSurface,
             waterAmountLost     : world.waterSpotLost.waterAmount,
+            waterAmountEvaporationFromPaper   : world.waterEvaporationFromPaper.waterAmount,
+            waterAmountEvaporationFromSurface : world.waterEvaporationFromSurface.waterAmount,
               dyeAmountTotal    :   dyeAmountTotal,
               dyeAmountsTotal   :   dyeAmountsTotal,
               dyeAmountsInPaper :   dyeAmountsInPaper,
@@ -598,11 +620,16 @@
               let nowMillis = Date.now();
               let rate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
               console.log(`iteration=${numIterations}, frames/s=${rate.toFixed(2)}`);
-              if (numIterations == 1) {
-                let totals = calcDyeAndWaterTotalsInWorld(world);
-                totalsList.push(totals);
-                // console.log(`     totals=${JSON.stringify(totals)}`);
-              } else {
+              let totals = calcDyeAndWaterTotalsInWorld(world);
+              totalsList.push(totals);
+              if (numIterations != 1) {
+                const totalsDelta = calcDyeAndWaterTotalDelta(totalsList);
+                if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
+                  console.log(`WARNING: delta error > ${minAcceptableDelta}
+                    first: ${JSON.stringify(totalsList[0])}
+                    last: ${JSON.stringify(totalsList[totalsList.length - 1])}`);
+                    console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
+                }
                 startBatchRunTimeMillis = nowMillis;
               }
             }
