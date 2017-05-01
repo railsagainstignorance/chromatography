@@ -413,6 +413,31 @@
           }
 
           // - ink will diffuse, in wet paper
+          //    - assume is related to relative concentrations, flowing from high to low (where both sides are wet)
+
+          if (thisValuePaperSpot.waterAmount > 0) {
+            for (direction of world.directions) {
+              let nhbr = neighbors[direction.index];
+              if (nhbr !== null ) {
+                let nhbrValuePaperSpot = nhbr.value.paperSpot;
+                if (nhbrValuePaperSpot.waterAmount > 0) {
+                  for (var d = 0; d < DYES.length; d++) {
+                    let thisValueConcentration = thisValuePaperSpot.dyeAmounts[d] / thisValuePaperSpot.waterAmount;
+                    let nhbrValueConcentration = nhbrValuePaperSpot.dyeAmounts[d] / nhbrValuePaperSpot.waterAmount;
+                    let deltaConcentration = nhbrValueConcentration - thisValueConcentration;
+                    if (deltaConcentration > 0) { // dye comes to here
+                      let flowAmount = DYES[d].Rd * ((deltaConcentration / nhbrValueConcentration) / 2) * nhbrValuePaperSpot.dyeAmounts[d] / 8;
+                      thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + flowAmount;
+                    } else if (deltaConcentration < 0) { // dye goes from here
+                      let flowAmount = DYES[d].Rd * ((deltaConcentration / thisValueConcentration) / 2) * thisValuePaperSpot.dyeAmounts[d] / 8;
+                      thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + flowAmount;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
           // - paper will dry out as water evaporates
           // - colours will change when wet/dry
           // - if dry, nothing will flow from this cell
