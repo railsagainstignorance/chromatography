@@ -285,6 +285,7 @@
       world.bleedDirections = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
       world.numDyes         = DYES.length;
       world.waterSpotFlowDownSlope = 0.5;
+      world.waterSpotLost = new WaterSpot();
 
     	world.registerCellType('paper', {
     		getCellValue: function () {
@@ -342,12 +343,17 @@
           //    - a slope
           //    - surface characteristics
           if (world.waterSpotFlowDownSlope > 0) {
-            this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount * (1 - world.waterSpotFlowDownSlope); // goes to BOTTOM, or off paper
+            const waterAmountLost = this.next.waterSpot.waterAmount * world.waterSpotFlowDownSlope;
+            this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount - waterAmountLost;
+            // goes to BOTTOM, or off paper
+            const thereIsNoBottom = (neighbors[world.BOTTOM.index] == null);
+            if (thereIsNoBottom) { world.waterSpotLost.waterAmount = world.waterSpotLost.waterAmount + waterAmountLost; }
             // transfer dyes: in water
             for (var d = 0; d < DYES.length; d++) {
               let dyeAmountLost = this.next.waterSpot.dyeAmounts[d] * world.waterSpotFlowDownSlope;
               if (DEBUGX1Y0TOPNHBR) { console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), d=${d}, dyeAmountLost=${dyeAmountLost}`); }
               this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] - dyeAmountLost;
+              if (thereIsNoBottom) { world.waterSpotLost.dyeAmounts[d] = world.waterSpotLost.dyeAmounts[d] + dyeAmountLost; }
             }
 
             const topNhbr = neighbors[world.TOP.index];
@@ -480,17 +486,20 @@
       const dyeAmountsTotal = DYES.newEmptyDyeAmounts();
       DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
       DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
-      const waterAmountTotal = waterAmountInPaper + waterAmountOnSurface;
+      DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
+      const waterAmountTotal = waterAmountInPaper + waterAmountOnSurface + world.waterSpotLost.waterAmount;
       const dyeAmountTotal   = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
 
       return {
         waterAmountTotal    : waterAmountTotal,
         waterAmountInPaper  : waterAmountInPaper,
         waterAmountOnSurface: waterAmountOnSurface,
+        waterAmountLost     : world.waterSpotLost.waterAmount,
           dyeAmountTotal    :   dyeAmountTotal,
           dyeAmountsTotal   :   dyeAmountsTotal,
           dyeAmountsInPaper :   dyeAmountsInPaper,
-          dyeAmountsInWater :   dyeAmountsInWater
+          dyeAmountsInWater :   dyeAmountsInWater,
+          dyeAmountsLost    : world.waterSpotLost.dyeAmounts,
       }
     }
 
