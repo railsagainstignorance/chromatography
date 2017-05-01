@@ -209,7 +209,7 @@
 
     //------------
     // accept a list of { x: , y: , droplet: }
-    // loop over the list, reset each cell and add to the cell.value
+    // loop over the list, reset each cell and add to the cell.next (because reset happens before process)
 
     CAWorld.prototype.addDroplets = function(spotsWithCoords) {
       for (spot of spotsWithCoords) {
@@ -218,7 +218,7 @@
           console.log(`DEBUG: CAWorld.prototype.addDroplets: spot.x=${spot.x}, spot.y=${spot.y}, this.height=${this.height}, this.width=${this.width}`);
         }
         // cell.reset();
-        var cellSpot = cell.value;
+        var cellSpot = cell.next;
         cellSpot.addDroplet(spot.droplet);
       }
     };
@@ -300,17 +300,29 @@
           //    - Rf for the dyes? Dyes get concentrated in remaining/reducing surface water?
           //    - some dyes get absorbed 'deeper' into the paper?
 
-          if (this.x == 0 && this.y == 0) {
+          const DEBUGX0Y0 = false; //(this.x == 0 && this.y == 0);
+
+          if (DEBUGX0Y0) {
             console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
+            this.next =${this.next.stringify()},
             this.value=${this.value.stringify()},
-            this.next=${this.next.stringify()}`);
+            this.prev =${this.prev.stringify()}`);
           }
 
           this.next.copy(this.value);
+          if (DEBUGX0Y0) {
+            console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
+            this.next =${this.next.stringify()}`);
+          }
+
           if (this.value.paperSpot.waterAmount < this.value.paperSpot.MaxWaterCapacity) {
             if (this.value.waterSpot.waterAmount > 0) {
-              const waterAmountToBeAbsorbed = Math.min(this.value.waterSpot.waterAmount, this.value.waterSpot.WaterAbsorptionRate);
+              const waterAmountToBeAbsorbed = Math.min(this.value.waterSpot.waterAmount, this.value.paperSpot.WaterAbsorptionRate);
               const proportionWaterAmountToBeAbsorbed = (this.value.waterSpot.waterAmount == 0)? 1.0 : (waterAmountToBeAbsorbed / this.value.waterSpot.waterAmount);
+              if (DEBUGX0Y0) {
+                console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
+                waterAmountToBeAbsorbed=${waterAmountToBeAbsorbed}, proportionWaterAmountToBeAbsorbed=${proportionWaterAmountToBeAbsorbed}`);
+              }
               // transfer water: add to paper, remove from water
               this.next.paperSpot.waterAmount = this.next.paperSpot.waterAmount + waterAmountToBeAbsorbed;
               this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount - waterAmountToBeAbsorbed;
@@ -423,10 +435,10 @@
             context.putImageData(imageData, 0, 0);
 
             world.addBigDrop(
-              // world.width  * Math.random(),
-              // world.height * Math.random(),
-              0,
-              0,
+              world.width  * Math.random(),
+              world.height * Math.random(),
+              // 0,
+              // 0,
               10+(Math.random()*20),
               WaterSpot.createBigRandomDrop()
             );
@@ -448,6 +460,15 @@
               window.dispatchEvent( new Event('StopRecording') );
             }
           }
+
+          // always have a drop on (0,0)
+          world.addBigDrop(
+            0,
+            0,
+            10+(Math.random()*20),
+            WaterSpot.createBigRandomDrop()
+          );
+
 
           iterateAndDisplayWorld();
         }
