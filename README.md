@@ -51,6 +51,22 @@ This will involve
       * max holding capacity for water,
          * e.g. the paper can't absorb more than a certain amount, and will continue to flow on the surface
 
+Thoughts on imminent CA coding:
+- some of the current surface water (plus the associated dyes) get absorbed
+   - capacity of paper
+   - Rf for the dyes? Dyes get concentrated in remaining/reducing surface water?
+   - some dyes get absorbed 'deeper' into the paper?
+- remaining surface water can flow from/to here, taking into account
+   - from high to low amounts
+   - a slope
+   - surface characteristics
+-  water in paper will, flow by capillary action, from high concentration to low
+   - taking with it some dyes
+- ink will diffuse, in wet paper
+- paper will dry out as water evaporates
+- colours will change when wet/dry
+- if dry, nothing will flow from this cell
+
 ...
 
 ## The plan - Part 1
