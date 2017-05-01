@@ -346,35 +346,36 @@
           //    - a slope
           //    - surface characteristics
           if (world.waterSpotFlowDownSlope > 0) {
+            const fromNhbr = neighbors[world.TOP.index];
+            const toNhbr   = neighbors[world.BOTTOM.index];
+
             const waterAmountLost = this.next.waterSpot.waterAmount * world.waterSpotFlowDownSlope;
             this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount - waterAmountLost;
             // goes to BOTTOM, or off paper
-            const thereIsNoBottom = (neighbors[world.BOTTOM.index] == null);
-            if (thereIsNoBottom) { world.waterSpotLost.waterAmount = world.waterSpotLost.waterAmount + waterAmountLost; }
+            if (toNhbr == null) { world.waterSpotLost.waterAmount = world.waterSpotLost.waterAmount + waterAmountLost; }
             // transfer dyes: in water
             for (var d = 0; d < DYES.length; d++) {
               let dyeAmountLost = this.next.waterSpot.dyeAmounts[d] * world.waterSpotFlowDownSlope;
               if (DEBUGX1Y0TOPNHBR) { console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), d=${d}, dyeAmountLost=${dyeAmountLost}`); }
               this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] - dyeAmountLost;
-              if (thereIsNoBottom) { world.waterSpotLost.dyeAmounts[d] = world.waterSpotLost.dyeAmounts[d] + dyeAmountLost; }
+              if (toNhbr == null) { world.waterSpotLost.dyeAmounts[d] = world.waterSpotLost.dyeAmounts[d] + dyeAmountLost; }
             }
 
-            const topNhbr = neighbors[world.TOP.index];
-            if (topNhbr !== null) {
-              if (topNhbr.value.waterSpot.waterAmount > 0) {
-                const waterAmountToBeAbsorbedInNhbr = Math.min(topNhbr.value.waterSpot.waterAmount,
-                                                               topNhbr.value.paperSpot.WaterAbsorptionRate,
-                                                               (topNhbr.value.paperSpot.MaxWaterCapacity - topNhbr.value.paperSpot.waterAmount));
-                const waterAmountRemainingOnNhbr = topNhbr.value.waterSpot.waterAmount - waterAmountToBeAbsorbedInNhbr;
+            if (fromNhbr !== null) {
+              if (fromNhbr.value.waterSpot.waterAmount > 0) {
+                const waterAmountToBeAbsorbedInNhbr = Math.min(fromNhbr.value.waterSpot.waterAmount,
+                                                               fromNhbr.value.paperSpot.WaterAbsorptionRate,
+                                                               (fromNhbr.value.paperSpot.MaxWaterCapacity - fromNhbr.value.paperSpot.waterAmount));
+                const waterAmountRemainingOnNhbr = fromNhbr.value.waterSpot.waterAmount - waterAmountToBeAbsorbedInNhbr;
                 const waterComingFromNhbr = waterAmountRemainingOnNhbr * world.waterSpotFlowDownSlope;
                 if (waterComingFromNhbr > 0) {
                   const proportionOfWaterComingFromNhbr = waterComingFromNhbr / waterAmountRemainingOnNhbr;
                   this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount + waterComingFromNhbr;
                   // transfer dyes: in water
                   for (var d = 0; d < DYES.length; d++) {
-                    const proportionWaterAmountToBeAbsorbedInNhbr = (waterAmountToBeAbsorbedInNhbr / topNhbr.value.waterSpot.waterAmount);
-                    const dyeAmountToBeAbsorbedInNhbr = proportionWaterAmountToBeAbsorbedInNhbr * topNhbr.value.waterSpot.dyeAmounts[d] * DYES[d].Rf;
-                    const dyeAmountAvailableToComeOver = topNhbr.value.waterSpot.dyeAmounts[d] - dyeAmountToBeAbsorbedInNhbr;
+                    const proportionWaterAmountToBeAbsorbedInNhbr = (waterAmountToBeAbsorbedInNhbr / fromNhbr.value.waterSpot.waterAmount);
+                    const dyeAmountToBeAbsorbedInNhbr = proportionWaterAmountToBeAbsorbedInNhbr * fromNhbr.value.waterSpot.dyeAmounts[d] * DYES[d].Rf;
+                    const dyeAmountAvailableToComeOver = fromNhbr.value.waterSpot.dyeAmounts[d] - dyeAmountToBeAbsorbedInNhbr;
                     const dyeAmountComingOver = dyeAmountAvailableToComeOver * proportionOfWaterComingFromNhbr;
                     this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] + dyeAmountComingOver;
                     if (DEBUGX1Y1TOPNHBR) { console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), d=${d}, dyeAmountComingOver=${dyeAmountComingOver}`); }
