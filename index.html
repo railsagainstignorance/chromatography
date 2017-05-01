@@ -67,6 +67,12 @@
       }
     }
 
+    DYES.addAmounts = function(from, to){
+      for (var i = 0; i < this.length; i++) {
+        to[i] = to[i] + from[i];
+      }
+    }
+
     DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
       // return [R, G, B, A]
       // assume no dyes => full transparent
@@ -260,7 +266,6 @@
 
     //------------
     // add a stepCount
-    // loop over the list, reset each cell and add to the cell.value
 
     CAWorld.prototype.stepWithCount = function() {
       if( !this.stepCount ){ this.stepCount = 0; }
@@ -470,6 +475,40 @@
       return gridOfDyeAmounts;
     }
 
+    function calcDyeAndWaterTotalsInWorld(world){
+      const worldGrid = world.grid;
+      const dyeAmountsInPaper    = DYES.newEmptyDyeAmounts();
+      const dyeAmountsInWater    = DYES.newEmptyDyeAmounts();
+      let waterAmountInPaper   = 0;
+      let waterAmountOnSurface = 0;
+
+      for (var x = 0; x < world.width; x++) {
+        for (var y = 0; y < world.height; y++) {
+          let cell = worldGrid[y][x].getCellValue();
+          DYES.addAmounts(cell.paperSpot.dyeAmounts, dyeAmountsInPaper);
+          DYES.addAmounts(cell.waterSpot.dyeAmounts, dyeAmountsInWater);
+          waterAmountInPaper   = waterAmountInPaper   + cell.paperSpot.waterAmount;
+          waterAmountOnSurface = waterAmountOnSurface + cell.waterSpot.waterAmount;
+        }
+      }
+
+      const dyeAmountsTotal = DYES.newEmptyDyeAmounts();
+      DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
+      DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
+      const waterAmountTotal = waterAmountInPaper + waterAmountOnSurface;
+      const dyeAmountTotal   = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
+
+      return {
+        waterAmountTotal    : waterAmountTotal,
+        waterAmountInPaper  : waterAmountInPaper,
+        waterAmountOnSurface: waterAmountOnSurface,
+          dyeAmountTotal    :   dyeAmountTotal,
+          dyeAmountsTotal   :   dyeAmountsTotal,
+          dyeAmountsInPaper :   dyeAmountsInPaper,
+          dyeAmountsInWater :   dyeAmountsInWater
+      }
+    }
+
     function createPaper(canvas, maxIterations=100){
         function addSolvent() {
           const context = canvas.getContext('2d');
@@ -492,7 +531,9 @@
             if (numIterations % batchSize == 0) {
               let nowMillis = Date.now();
               let rate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
-              console.log(`iteration=${numIterations}, frames/s=${rate.toFixed(2)}`);
+              let totals = calcDyeAndWaterTotalsInWorld(world);
+              console.log(`iteration=${numIterations}, frames/s=${rate.toFixed(2)}
+              totals=${JSON.stringify(totals)}`);
               startBatchRunTimeMillis = nowMillis;
             }
 
