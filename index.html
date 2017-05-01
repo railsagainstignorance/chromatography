@@ -175,11 +175,11 @@
       return drop;
     }
 
-    WaterSpot.createBigRandomDrop = function() {
-      const waterAmount = 1000.0;
+    WaterSpot.createBigRandomDrop = function(volume=1000) {
+      const waterAmount = volume;
       const dyeAmounts = DYES.newEmptyDyeAmounts();
       for (var i = 0; i < dyeAmounts.length; i++) {
-        dyeAmounts[i] = 3000.0*Math.random();
+        dyeAmounts[i] = volume*3*Math.random();
       }
       const drop = new WaterSpot(waterAmount, dyeAmounts);
       return drop;
@@ -301,9 +301,9 @@
           //    - Rf for the dyes? Dyes get concentrated in remaining/reducing surface water?
           //    - some dyes get absorbed 'deeper' into the paper?
 
-          const DEBUGX0Y0 = false; //(this.x == 0 && this.y == 0);
+          const DEBUGX1Y1 = (this.x == 1 && this.y == 1); //false;
 
-          if (DEBUGX0Y0) {
+          if (DEBUGX1Y1) {
             console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
             this.next =${this.next.stringify()},
             this.value=${this.value.stringify()},
@@ -311,7 +311,7 @@
           }
 
           this.next.copy(this.value);
-          if (DEBUGX0Y0) {
+          if (DEBUGX1Y1) {
             console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
             this.next =${this.next.stringify()}`);
           }
@@ -320,7 +320,7 @@
             if (this.value.waterSpot.waterAmount > 0) {
               const waterAmountToBeAbsorbed = Math.min(this.value.waterSpot.waterAmount, this.value.paperSpot.WaterAbsorptionRate);
               const proportionWaterAmountToBeAbsorbed = (this.value.waterSpot.waterAmount == 0)? 1.0 : (waterAmountToBeAbsorbed / this.value.waterSpot.waterAmount);
-              if (DEBUGX0Y0) {
+              if (DEBUGX1Y1) {
                 console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
                 waterAmountToBeAbsorbed=${waterAmountToBeAbsorbed}, proportionWaterAmountToBeAbsorbed=${proportionWaterAmountToBeAbsorbed}`);
               }
@@ -331,7 +331,7 @@
               for (var d = 0; d < DYES.length; d++) {
                 const  flowAmount = proportionWaterAmountToBeAbsorbed * this.value.waterSpot.dyeAmounts[d] * DYES[d].Rf;
                 this.next.paperSpot.dyeAmounts[d] = this.next.paperSpot.dyeAmounts[d] + flowAmount;
-                this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] + flowAmount;
+                this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] - flowAmount;
               }
             }
           }
@@ -341,13 +341,34 @@
           //    - a slope
           //    - surface characteristics
           if (world.waterSpotFlowDownSlope > 0) {
-            this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount * world.waterSpotFlowDownSlope; // goes to BOTTOM
+            this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount * (1 - world.waterSpotFlowDownSlope); // goes to BOTTOM
+            // transfer dyes: in water
+            for (var d = 0; d < DYES.length; d++) {
+              this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] * (1 - world.waterSpotFlowDownSlope);
+            }
+
             const topNhbr = neighbors[world.TOP.index];
             if (topNhbr !== null) {
               if (topNhbr.value.waterSpot.waterAmount > 0) {
-                const waterAmountToBeAbsorbedInNhbr = Math.min(topNhbr.value.waterSpot.waterAmount, topNhbr.value.paperSpot.WaterAbsorptionRate);
+                const waterAmountToBeAbsorbedInNhbr = Math.min(topNhbr.value.waterSpot.waterAmount,
+                                                               topNhbr.value.paperSpot.WaterAbsorptionRate,
+                                                               (topNhbr.value.paperSpot.MaxWaterCapacity - topNhbr.value.paperSpot.waterAmount));
                 const waterAmountRemainingOnNhbr = topNhbr.value.waterSpot.waterAmount - waterAmountToBeAbsorbedInNhbr;
-                this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount + (waterAmountRemainingOnNhbr * world.waterSpotFlowDownSlope);
+                const waterComingFromNhbr = waterAmountRemainingOnNhbr * world.waterSpotFlowDownSlope;
+                const proportionOfWaterComingFromNhbr = waterComingFromNhbr / waterAmountRemainingOnNhbr;
+                if (DEBUGX1Y1) {
+                  console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
+                  found topNhbr, waterAmount>0, waterAmountToBeAbsorbedInNhbr=${waterAmountToBeAbsorbedInNhbr}, waterAmountRemainingOnNhbr=${waterAmountRemainingOnNhbr}, waterComingFromNhbr=${waterComingFromNhbr}`);
+                }
+                this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount + waterComingFromNhbr;
+                // transfer dyes: in water
+                for (var d = 0; d < DYES.length; d++) {
+                  const proportionWaterAmountToBeAbsorbedInNhbr = (topNhbr.value.waterSpot.waterAmount == 0)? 1.0 : (waterAmountToBeAbsorbedInNhbr / topNhbr.value.waterSpot.waterAmount);
+                  const dyeAmountToBeAbsorbedInNhbr = proportionWaterAmountToBeAbsorbedInNhbr * topNhbr.value.waterSpot.dyeAmounts[d] * DYES[d].Rf;
+                  const dyeAmountAvailableToComeOver = topNhbr.value.waterSpot.dyeAmounts[d] - dyeAmountToBeAbsorbedInNhbr;
+                  const dyeAmountComingOver = dyeAmountAvailableToComeOver * proportionOfWaterComingFromNhbr;
+                  this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] + dyeAmountComingOver;
+                }
               }
             }
           }
@@ -414,14 +435,18 @@
     	return world;
     }
 
-    function convertWorldGridToGridOfDyeAmounts(worldGrid){
+    function convertWorldGridToGridOfDyeAmounts(world){
+      var worldGrid = world.grid;
       var gridOfDyeAmounts = [];
 
-      for (var x = 0; x < worldGrid.length; x++) {
+      // imageData reads from top left to bottom right
+      // world reads from bottom left to top right (I think)
+
+      for (var x = 0; x < world.width; x++) {
         var col = [];
         gridOfDyeAmounts.push(col);
-        for (var y = 0; y < worldGrid[0].length; y++) {
-          col.push( worldGrid[x][y].getCellValue().paperSpot.dyeAmounts);
+        for (var y = 0; y < world.height; y++) {
+          col.push( worldGrid[y][x].getCellValue().paperSpot.dyeAmounts);
         }
       }
 
@@ -443,7 +468,7 @@
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.stepWithCount();
-            let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world.grid);
+            let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world);
             DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
             context.putImageData(imageData, 0, 0);
 
@@ -473,14 +498,14 @@
             WaterSpot.createBigRandomDrop()
           );
 
-          const numDropsAcross = 5;
-          const maxDropSize = world.width / (numDropsAcross+1);
+          const numDropsAcross = 2;
+          const dropSpacing = world.width / (numDropsAcross+1);
           for (var i = 0; i < numDropsAcross; i++) {
             world.addBigDrop(
-              (1+i) * maxDropSize,
+              (1+i) * dropSpacing,
               world.height / 4,
-              10+(Math.random()*maxDropSize),
-              WaterSpot.createBigRandomDrop()
+              2+(Math.random()*dropSpacing/2),
+              WaterSpot.createBigRandomDrop(1000000000)
             );
           }
 
@@ -502,12 +527,12 @@
 <body>
   <h1>Chromatography</h1>
 
-    <canvas class="blotting-paper" id="myCanvas" width="400" height="400"></canvas>
+    <canvas class="blotting-paper" id="myCanvas" width="100" height="100"></canvas>
 
   <script>
   (function(){
     const codeVersion = '2-0'; // affects filename of recording
-    const maxIterations = 10;
+    const maxIterations = 200;
 
     const canvas = document.getElementById('myCanvas');
     const context = canvas.getContext('2d');
