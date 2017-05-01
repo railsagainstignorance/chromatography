@@ -307,6 +307,8 @@
           //    - some dyes get absorbed 'deeper' into the paper?
 
           const DEBUGX1Y1 = false; //(this.x == 1 && this.y == 1); //false;
+          const DEBUGX1Y0TOPNHBR = false; // (this.x == 1 && this.y == 0); //false;
+          const DEBUGX1Y1TOPNHBR = false; // (this.x == 1 && this.y == 1); //false;
 
           if (DEBUGX1Y1) {
             console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
@@ -316,35 +318,23 @@
           }
 
           this.next.copy(this.value);
-          if (DEBUGX1Y1) {
-            console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
-            this.next =${this.next.stringify()}`);
-          }
 
           if (this.value.waterSpot.waterAmount > 0) {
             const remainingPaperWaterCapacity = this.value.paperSpot.MaxWaterCapacity - this.value.paperSpot.waterAmount;
             if (remainingPaperWaterCapacity > 0) {
               const waterAmountToBeAbsorbed = Math.min(this.value.waterSpot.waterAmount, this.value.paperSpot.WaterAbsorptionRate, remainingPaperWaterCapacity);
               const proportionWaterAmountToBeAbsorbed = (waterAmountToBeAbsorbed / this.value.waterSpot.waterAmount);
-              if (DEBUGX1Y1) {
-                console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
-                waterAmountToBeAbsorbed=${waterAmountToBeAbsorbed}, proportionWaterAmountToBeAbsorbed=${proportionWaterAmountToBeAbsorbed}`);
-              }
               // transfer water: add to paper, remove from water
               this.next.paperSpot.waterAmount = this.next.paperSpot.waterAmount + waterAmountToBeAbsorbed;
               this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount - waterAmountToBeAbsorbed;
               // transfer dyes: add to paper, remove from water
               for (var d = 0; d < DYES.length; d++) {
-                const  flowAmount = proportionWaterAmountToBeAbsorbed * this.value.waterSpot.dyeAmounts[d] * DYES[d].Rf;
+                const flowProportion = (proportionWaterAmountToBeAbsorbed == 1)? 1 : proportionWaterAmountToBeAbsorbed * DYES[d].Rf;
+                const flowAmount = flowProportion * this.value.waterSpot.dyeAmounts[d];
                 this.next.paperSpot.dyeAmounts[d] = this.next.paperSpot.dyeAmounts[d] + flowAmount;
                 this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] - flowAmount;
               }
             }
-          }
-
-          if (DEBUGX1Y1) {
-            console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), after absorbing,
-            this.next =${this.next.stringify()}`);
           }
 
           // - remaining surface water can flow from/to here, taking into account
@@ -352,15 +342,12 @@
           //    - a slope
           //    - surface characteristics
           if (world.waterSpotFlowDownSlope > 0) {
-            this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount * (1 - world.waterSpotFlowDownSlope); // goes to BOTTOM
+            this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount * (1 - world.waterSpotFlowDownSlope); // goes to BOTTOM, or off paper
             // transfer dyes: in water
             for (var d = 0; d < DYES.length; d++) {
-              this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] * (1 - world.waterSpotFlowDownSlope);
-            }
-
-            if (DEBUGX1Y1) {
-              console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), after losing to BOTTOM,
-              this.next =${this.next.stringify()}`);
+              let dyeAmountLost = this.next.waterSpot.dyeAmounts[d] * world.waterSpotFlowDownSlope;
+              if (DEBUGX1Y0TOPNHBR) { console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), d=${d}, dyeAmountLost=${dyeAmountLost}`); }
+              this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] - dyeAmountLost;
             }
 
             const topNhbr = neighbors[world.TOP.index];
@@ -371,20 +358,17 @@
                                                                (topNhbr.value.paperSpot.MaxWaterCapacity - topNhbr.value.paperSpot.waterAmount));
                 const waterAmountRemainingOnNhbr = topNhbr.value.waterSpot.waterAmount - waterAmountToBeAbsorbedInNhbr;
                 const waterComingFromNhbr = waterAmountRemainingOnNhbr * world.waterSpotFlowDownSlope;
-                if (DEBUGX1Y1) {
-                  console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), assessing water from TOP,
-                  found topNhbr, waterAmount>0, waterAmountToBeAbsorbedInNhbr=${waterAmountToBeAbsorbedInNhbr}, waterAmountRemainingOnNhbr=${waterAmountRemainingOnNhbr}, waterComingFromNhbr=${waterComingFromNhbr}`);
-                }
                 if (waterComingFromNhbr > 0) {
                   const proportionOfWaterComingFromNhbr = waterComingFromNhbr / waterAmountRemainingOnNhbr;
                   this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount + waterComingFromNhbr;
                   // transfer dyes: in water
                   for (var d = 0; d < DYES.length; d++) {
-                    const proportionWaterAmountToBeAbsorbedInNhbr = (topNhbr.value.waterSpot.waterAmount == 0)? 1.0 : (waterAmountToBeAbsorbedInNhbr / topNhbr.value.waterSpot.waterAmount);
+                    const proportionWaterAmountToBeAbsorbedInNhbr = (waterAmountToBeAbsorbedInNhbr / topNhbr.value.waterSpot.waterAmount);
                     const dyeAmountToBeAbsorbedInNhbr = proportionWaterAmountToBeAbsorbedInNhbr * topNhbr.value.waterSpot.dyeAmounts[d] * DYES[d].Rf;
                     const dyeAmountAvailableToComeOver = topNhbr.value.waterSpot.dyeAmounts[d] - dyeAmountToBeAbsorbedInNhbr;
                     const dyeAmountComingOver = dyeAmountAvailableToComeOver * proportionOfWaterComingFromNhbr;
                     this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] + dyeAmountComingOver;
+                    if (DEBUGX1Y1TOPNHBR) { console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), d=${d}, dyeAmountComingOver=${dyeAmountComingOver}`); }
                   }
                 }
               }
@@ -511,7 +495,7 @@
     }
 
     function createPaper(canvas, maxIterations=100){
-        function addSolvent() {
+        function createPaperAddDropsAndRun() {
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
@@ -523,8 +507,8 @@
           let   startBatchRunTimeMillis   = Date.now();
 
           let totals = calcDyeAndWaterTotalsInWorld(world);
-          console.log(`iteration=0,
-          totals=${JSON.stringify(totals)}`);
+          console.log(`iteration=0,`);
+          console.log(`     totals=${JSON.stringify(totals)}`);
 
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
@@ -533,13 +517,16 @@
             DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
             context.putImageData(imageData, 0, 0);
 
-            if (numIterations % batchSize == 0) {
+            if ((numIterations % batchSize == 0) || numIterations==1 ) {
               let nowMillis = Date.now();
               let rate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
-              let totals = calcDyeAndWaterTotalsInWorld(world);
-              console.log(`iteration=${numIterations}, frames/s=${rate.toFixed(2)}
-              totals=${JSON.stringify(totals)}`);
-              startBatchRunTimeMillis = nowMillis;
+              console.log(`iteration=${numIterations}, frames/s=${rate.toFixed(2)}`);
+              if (numIterations == 1) {
+                let totals = calcDyeAndWaterTotalsInWorld(world);
+                console.log(`     totals=${JSON.stringify(totals)}`);
+              } else {
+                startBatchRunTimeMillis = nowMillis;
+              }
             }
 
             numIterations = numIterations + 1;
@@ -548,7 +535,9 @@
             } else {
               let nowMillis = Date.now();
               let rate = (numIterations - 1) / ((nowMillis - startOverallRunTimeMillis) / 1000);
+              let totals = calcDyeAndWaterTotalsInWorld(world);
               console.log(`ending on world iteration=${numIterations} of ${maxIterations}, frames/s=${rate.toFixed(2)}`);
+              console.log(`     totals=${JSON.stringify(totals)}`);
               window.dispatchEvent( new Event('StopRecording') );
             }
           }
@@ -576,7 +565,7 @@
         }
 
         return {
-          run: addSolvent
+          run: createPaperAddDropsAndRun
         }
     }
 
