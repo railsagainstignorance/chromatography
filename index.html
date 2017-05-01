@@ -447,15 +447,6 @@
             DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
             context.putImageData(imageData, 0, 0);
 
-            world.addBigDrop(
-              world.width  * Math.random(),
-              world.height * Math.random(),
-              // 0,
-              // 0,
-              10+(Math.random()*20),
-              WaterSpot.createBigRandomDrop()
-            );
-
             if (numIterations % batchSize == 0) {
               let nowMillis = Date.now();
               let rate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
@@ -482,6 +473,16 @@
             WaterSpot.createBigRandomDrop()
           );
 
+          const numDropsAcross = 5;
+          const maxDropSize = world.width / (numDropsAcross+1);
+          for (var i = 0; i < numDropsAcross; i++) {
+            world.addBigDrop(
+              (1+i) * maxDropSize,
+              world.height / 4,
+              10+(Math.random()*maxDropSize),
+              WaterSpot.createBigRandomDrop()
+            );
+          }
 
           iterateAndDisplayWorld();
         }
