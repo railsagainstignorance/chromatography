@@ -279,6 +279,7 @@
       world.flowRate        = 1.0;
       world.bleedDirections = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
       world.numDyes         = DYES.length;
+      world.waterSpotFlowDownSlope = 0.5;
 
     	world.registerCellType('paper', {
     		getCellValue: function () {
@@ -339,6 +340,18 @@
           //    - from high to low amounts
           //    - a slope
           //    - surface characteristics
+          if (world.waterSpotFlowDownSlope > 0) {
+            this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount * world.waterSpotFlowDownSlope; // goes to BOTTOM
+            const topNhbr = neighbors[world.TOP.index];
+            if (topNhbr !== null) {
+              if (topNhbr.value.waterSpot.waterAmount > 0) {
+                const waterAmountToBeAbsorbedInNhbr = Math.min(topNhbr.value.waterSpot.waterAmount, topNhbr.value.paperSpot.WaterAbsorptionRate);
+                const waterAmountRemainingOnNhbr = topNhbr.value.waterSpot.waterAmount - waterAmountToBeAbsorbedInNhbr;
+                this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount + (waterAmountRemainingOnNhbr * world.waterSpotFlowDownSlope);
+              }
+            }
+          }
+
           // -  water in paper will, flow by capillary action, from high concentration to low
           //    - taking with it some dyes
           // - ink will diffuse, in wet paper
