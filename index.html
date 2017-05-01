@@ -284,9 +284,9 @@
     		height: Math.floor(height),
     	});
 
-      world.flowRate        = 1.0;
-      world.bleedDirections = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
-      world.numDyes         = DYES.length;
+      world.flowRate   = 1.0;
+      world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
+      world.numDyes    = DYES.length;
       world.waterSpotFlowDownSlope = 0.5;
       world.waterSpotLost = new WaterSpot();
 
@@ -382,8 +382,36 @@
             }
           }
 
-          // -  water in paper will, flow by capillary action, from high concentration to low
+          // -  water in paper will, flow by capillary action, from high moisture to low
           //    - taking with it some dyes
+
+          const remainingPaperWaterCapacity = thisValuePaperSpot.MaxWaterCapacity - thisValuePaperSpot.waterAmount;
+          for (direction of world.directions) {
+            let nhbr = neighbors[direction.index];
+            if (nhbr !== null ) {
+              let nhbrValuePaperSpot = nhbr.value.paperSpot;
+              let deltaWaterAmount = (nhbrValuePaperSpot.waterAmount - thisValuePaperSpot.waterAmount);
+              if (remainingPaperWaterCapacity > 0 && deltaWaterAmount > 0) {
+                let waterFlowAmount = deltaWaterAmount * (remainingPaperWaterCapacity / thisValuePaperSpot.MaxWaterCapacity) / 8;
+                thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterFlowAmount;
+                for (var d = 0; d < DYES.length; d++) {
+                  let flowAmount = waterFlowAmount * DYES[d].Rf * nhbrValuePaperSpot.dyeAmounts[d];
+                  thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + flowAmount;
+                }
+              } else if(deltaWaterAmount < 0) {
+                let nhbrRemainingPaperWaterCapacity = nhbrValuePaperSpot.MaxWaterCapacity - nhbrValuePaperSpot.waterAmount;
+                if (nhbrRemainingPaperWaterCapacity > 0) {
+                  let waterFlowAmount = (- deltaWaterAmount) * (nhbrRemainingPaperWaterCapacity / nhbrValuePaperSpot.MaxWaterCapacity) / 8;
+                  thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - waterFlowAmount;
+                  for (var d = 0; d < DYES.length; d++) {
+                    let flowAmount = waterFlowAmount * DYES[d].Rf * thisValuePaperSpot.dyeAmounts[d];
+                    thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] - flowAmount;
+                  }
+                }
+              }
+            }
+          }
+
           // - ink will diffuse, in wet paper
           // - paper will dry out as water evaporates
           // - colours will change when wet/dry
