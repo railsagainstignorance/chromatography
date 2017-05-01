@@ -302,8 +302,11 @@
       world.waterEvaporationFromSurface = new WaterSpot();
 
     	world.registerCellType('paper', {
-    		getCellValue: function () {
+        getCellValue: function () {
           return this.value;
+    		},
+        getCellNextValue: function () {
+          return this.next;
     		},
     		process: function (neighbors) {
           // do clever flow stuff here
@@ -331,12 +334,12 @@
           // The calculations, add/remove of assorted resources, accumulate in the .next value,
           // then the .next value is switched in to 'be' the current .value when 'reset' is invoked.
 
+          this.next.copy(this.value);
+
           // - some of the current surface water (plus the associated dyes) get absorbed
           //    - capacity of paper
           //    - Rf for the dyes? Dyes get concentrated in remaining/reducing surface water?
           //    - some dyes get absorbed 'deeper' into the paper?
-
-          this.next.copy(this.value);
 
           const thisNextWaterSpot  = this.next.waterSpot;
           const thisNextPaperSpot  = this.next.paperSpot;
@@ -466,13 +469,16 @@
           //    - for simplicity, apply evaporation to computed Next, otherwise needs to be included in all other calculations
           //    - handle when there are dyes in surface water which fully evaporates
 
+          // --> there's a leak in here somewhere...
           // if (thisNextWaterSpot.waterAmount > 0) {
           //   let evapAmount = Math.min(thisNextWaterSpot.waterAmount, world.EvaporationFromSurfaceRate);
-          //   thisNextWaterSpot.waterAmount = thisNextWaterSpot.waterAmount - evapAmount;
-          //   world.waterEvaporationFromSurface.waterAmount = world.waterEvaporationFromSurface.waterAmount + evapAmount;
-          //   if (thisNextWaterSpot.waterAmount == 0) {
-          //     thisNextPaperSpot.addDroplet(thisNextWaterSpot);
-          //     thisNextWaterSpot.dyeAmounts.fill(0);
+          //   if (evapAmount > 0) {
+          //     thisNextWaterSpot.waterAmount = thisNextWaterSpot.waterAmount - evapAmount;
+          //     world.waterEvaporationFromSurface.waterAmount = world.waterEvaporationFromSurface.waterAmount + evapAmount;
+          //     if (thisNextWaterSpot.waterAmount == 0) {
+          //       thisNextPaperSpot.addDroplet(thisNextWaterSpot);
+          //       thisNextWaterSpot.dyeAmounts.fill(0);
+          //     }
           //   }
           // }
           // else
@@ -484,6 +490,18 @@
 
           // - colours will change when wet/dry
           // - if dry, nothing will flow from this cell
+
+          // sanity check on values
+
+          function thisError(msg){
+            throw new Error(`ERROR: (${this.x}, ${this.y}): ${msg}`);
+          }
+          if (thisValuePaperSpot.waterAmount < 0) { thisError(`thisValuePaperSpot.waterAmount < 0, ${thisValuePaperSpot.waterAmount}`); }
+          if (thisValueWaterSpot.waterAmount < 0) { thisError(`thisValueWaterSpot.waterAmount < 0, ${thisValueWaterSpot.waterAmount}`); }
+          for (var d = 0; d < DYES.length; d++) {
+            if (thisValuePaperSpot.dyeAmounts[d] < 0) { thisError(`thisValuePaperSpot.dyeAmounts[${d}]<0, ${thisValuePaperSpot.dyeAmounts[d]}`); }
+            if (thisValueWaterSpot.dyeAmounts[d] < 0) { thisError(`thisValueWaterSpot.dyeAmounts[${d}]<0, ${thisValueWaterSpot.dyeAmounts[d]}`); }
+          }
 
           if (DEBUGX1Y1) {
             console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}), final next,
@@ -544,7 +562,7 @@
 
           for (var x = 0; x < world.width; x++) {
             for (var y = 0; y < world.height; y++) {
-              let cell = worldGrid[y][x].getCellValue();
+              let cell = worldGrid[y][x].getCellNextValue();
               DYES.addAmounts(cell.paperSpot.dyeAmounts, dyeAmountsInPaper);
               DYES.addAmounts(cell.waterSpot.dyeAmounts, dyeAmountsInWater);
               waterAmountInPaper   = waterAmountInPaper   + cell.paperSpot.waterAmount;
@@ -557,7 +575,6 @@
           DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
           DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
           const dyeAmountTotal = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
-
           const waterAmountTotal = [
             waterAmountInPaper,
             waterAmountOnSurface,
@@ -582,8 +599,8 @@
           }
         }
 
-        function calcDyeAndWaterTotalDelta(totalsList){
-          const first = totalsList[0];
+        function calcDyeAndWaterTotalDelta(totalsList, relative=true){
+          const first = (relative)? totalsList[totalsList.length - 2] : totalsList[0];
           const last  = totalsList[totalsList.length - 1];
           return {
               stepCountDelta : last.stepCount - first.stepCount + 1,
@@ -644,7 +661,8 @@
               totalsList.push(totals);
               console.log(`ending on world iteration=${numIterations} of ${maxIterations}, frames/s=${rate.toFixed(2)}`);
               // console.log(`     totals=${JSON.stringify(totals)}`);
-              const totalsDelta = calcDyeAndWaterTotalDelta(totalsList);
+              let relative=false;
+              const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
               console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
               if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
                 console.log(`WARNING: delta error > ${minAcceptableDelta}
@@ -663,14 +681,14 @@
             WaterSpot.createBigRandomDrop()
           );
 
-          const numDropsAcross = 2;
+          const numDropsAcross = 5;
           const dropSpacing = world.width / (numDropsAcross+1);
           for (var i = 0; i < numDropsAcross; i++) {
             world.addBigDrop(
               (1+i) * dropSpacing,
               world.height / 4,
-              2+(Math.random()*dropSpacing/2),
-              WaterSpot.createBigRandomDrop(500)
+              2+(Math.random()*dropSpacing),
+              WaterSpot.createBigRandomDrop(1000)
             );
           }
 
