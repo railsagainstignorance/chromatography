@@ -321,10 +321,11 @@
             this.next =${this.next.stringify()}`);
           }
 
-          if (this.value.paperSpot.waterAmount < this.value.paperSpot.MaxWaterCapacity) {
-            if (this.value.waterSpot.waterAmount > 0) {
-              const waterAmountToBeAbsorbed = Math.min(this.value.waterSpot.waterAmount, this.value.paperSpot.WaterAbsorptionRate);
-              const proportionWaterAmountToBeAbsorbed = (this.value.waterSpot.waterAmount == 0)? 1.0 : (waterAmountToBeAbsorbed / this.value.waterSpot.waterAmount);
+          if (this.value.waterSpot.waterAmount > 0) {
+            const remainingPaperWaterCapacity = this.value.paperSpot.MaxWaterCapacity - this.value.paperSpot.waterAmount;
+            if (remainingPaperWaterCapacity > 0) {
+              const waterAmountToBeAbsorbed = Math.min(this.value.waterSpot.waterAmount, this.value.paperSpot.WaterAbsorptionRate, remainingPaperWaterCapacity);
+              const proportionWaterAmountToBeAbsorbed = (waterAmountToBeAbsorbed / this.value.waterSpot.waterAmount);
               if (DEBUGX1Y1) {
                 console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
                 waterAmountToBeAbsorbed=${waterAmountToBeAbsorbed}, proportionWaterAmountToBeAbsorbed=${proportionWaterAmountToBeAbsorbed}`);
@@ -517,9 +518,13 @@
           const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height);
 
           let numIterations=1;
-          let batchSize = 5;
+          let batchSize = 10;
           const startOverallRunTimeMillis = Date.now();
           let   startBatchRunTimeMillis   = Date.now();
+
+          let totals = calcDyeAndWaterTotalsInWorld(world);
+          console.log(`iteration=0,
+          totals=${JSON.stringify(totals)}`);
 
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
@@ -548,10 +553,10 @@
             }
           }
 
-          // always have a drop on (0,0)
+          // always have a drop on (1,1) for debugging
           world.addBigDrop(
-            0,
-            0,
+            1,
+            1,
             10+(Math.random()*20),
             WaterSpot.createBigRandomDrop()
           );
