@@ -95,7 +95,7 @@
       if (maxRGB01 == 0) {
         rgba01.fill(1.0);
       }
-      
+
       var rgba = rgba01.map(c => {return (c>1.0)? 255 : Math.floor(c * 255);});
       return rgba;
     }
@@ -451,73 +451,74 @@
     	return world;
     }
 
-    function convertWorldGridToGridOfDyeAmounts(world){
-      var worldGrid = world.grid;
-      var gridOfDyeAmounts = [];
-
-      // imageData reads from top left to bottom right
-      // world reads from bottom left to top right (I think)
-
-      for (var x = 0; x < world.width; x++) {
-        var col = [];
-        gridOfDyeAmounts.push(col);
-        for (var y = 0; y < world.height; y++) {
-          col.push( worldGrid[y][x].getCellValue().paperSpot.dyeAmounts);
-        }
-      }
-
-      return gridOfDyeAmounts;
-    }
-
-    function calcDyeAndWaterTotalsInWorld(world){
-      const worldGrid = world.grid;
-      const dyeAmountsInPaper    = DYES.newEmptyDyeAmounts();
-      const dyeAmountsInWater    = DYES.newEmptyDyeAmounts();
-      let waterAmountInPaper   = 0;
-      let waterAmountOnSurface = 0;
-
-      for (var x = 0; x < world.width; x++) {
-        for (var y = 0; y < world.height; y++) {
-          let cell = worldGrid[y][x].getCellValue();
-          DYES.addAmounts(cell.paperSpot.dyeAmounts, dyeAmountsInPaper);
-          DYES.addAmounts(cell.waterSpot.dyeAmounts, dyeAmountsInWater);
-          waterAmountInPaper   = waterAmountInPaper   + cell.paperSpot.waterAmount;
-          waterAmountOnSurface = waterAmountOnSurface + cell.waterSpot.waterAmount;
-        }
-      }
-
-      const dyeAmountsTotal = DYES.newEmptyDyeAmounts();
-      DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
-      DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
-      DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
-      const waterAmountTotal = waterAmountInPaper + waterAmountOnSurface + world.waterSpotLost.waterAmount;
-      const dyeAmountTotal   = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
-
-      return {
-        waterAmountTotal    : waterAmountTotal,
-        waterAmountInPaper  : waterAmountInPaper,
-        waterAmountOnSurface: waterAmountOnSurface,
-        waterAmountLost     : world.waterSpotLost.waterAmount,
-          dyeAmountTotal    :   dyeAmountTotal,
-          dyeAmountsTotal   :   dyeAmountsTotal,
-          dyeAmountsInPaper :   dyeAmountsInPaper,
-          dyeAmountsInWater :   dyeAmountsInWater,
-          dyeAmountsLost    : world.waterSpotLost.dyeAmounts,
-                  stepCount : world.stepCount
-      }
-    }
-
-    function calcDyeAndWaterTotalDelta(totalsList){
-      const first = totalsList[0];
-      const last  = totalsList[totalsList.length - 1];
-      return {
-          stepCountDelta : last.stepCount - first.stepCount + 1,
-        waterAmountTotal : (last.waterAmountTotal - first.waterAmountTotal).toFixed(5),
-          dyeAmountTotal : (last.dyeAmountTotal - first.dyeAmountTotal).toFixed(5),
-      }
-    }
-
     function createPaper(canvas, maxIterations=100){
+
+        function convertWorldGridToGridOfDyeAmounts(world){
+          var worldGrid = world.grid;
+          var gridOfDyeAmounts = [];
+
+          // imageData reads from top left to bottom right
+          // world reads from bottom left to top right (I think)
+
+          for (var x = 0; x < world.width; x++) {
+            var col = [];
+            gridOfDyeAmounts.push(col);
+            for (var y = 0; y < world.height; y++) {
+              col.push( worldGrid[y][x].getCellValue().paperSpot.dyeAmounts);
+            }
+          }
+
+          return gridOfDyeAmounts;
+        }
+
+        function calcDyeAndWaterTotalsInWorld(world){
+          const worldGrid = world.grid;
+          const dyeAmountsInPaper    = DYES.newEmptyDyeAmounts();
+          const dyeAmountsInWater    = DYES.newEmptyDyeAmounts();
+          let waterAmountInPaper   = 0;
+          let waterAmountOnSurface = 0;
+
+          for (var x = 0; x < world.width; x++) {
+            for (var y = 0; y < world.height; y++) {
+              let cell = worldGrid[y][x].getCellValue();
+              DYES.addAmounts(cell.paperSpot.dyeAmounts, dyeAmountsInPaper);
+              DYES.addAmounts(cell.waterSpot.dyeAmounts, dyeAmountsInWater);
+              waterAmountInPaper   = waterAmountInPaper   + cell.paperSpot.waterAmount;
+              waterAmountOnSurface = waterAmountOnSurface + cell.waterSpot.waterAmount;
+            }
+          }
+
+          const dyeAmountsTotal = DYES.newEmptyDyeAmounts();
+          DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
+          DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
+          DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
+          const waterAmountTotal = waterAmountInPaper + waterAmountOnSurface + world.waterSpotLost.waterAmount;
+          const dyeAmountTotal   = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
+
+          return {
+            waterAmountTotal    : waterAmountTotal,
+            waterAmountInPaper  : waterAmountInPaper,
+            waterAmountOnSurface: waterAmountOnSurface,
+            waterAmountLost     : world.waterSpotLost.waterAmount,
+              dyeAmountTotal    :   dyeAmountTotal,
+              dyeAmountsTotal   :   dyeAmountsTotal,
+              dyeAmountsInPaper :   dyeAmountsInPaper,
+              dyeAmountsInWater :   dyeAmountsInWater,
+              dyeAmountsLost    : world.waterSpotLost.dyeAmounts,
+                      stepCount : world.stepCount
+          }
+        }
+
+        function calcDyeAndWaterTotalDelta(totalsList){
+          const first = totalsList[0];
+          const last  = totalsList[totalsList.length - 1];
+          return {
+              stepCountDelta : last.stepCount - first.stepCount + 1,
+            waterAmountTotal : (last.waterAmountTotal - first.waterAmountTotal).toFixed(5),
+              dyeAmountTotal : (last.dyeAmountTotal - first.dyeAmountTotal).toFixed(5),
+          }
+        }
+
         function createPaperAddDropsAndRun() {
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
@@ -647,7 +648,7 @@
       const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorder.ondataavailable = download;
       mediaRecorder.start();
-      window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
+      // window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
     }
 
     {
