@@ -61,6 +61,12 @@
       return new Array(this.length).fill(0);
     }
 
+    DYES.copyAmounts = function(from, to){
+      for (var i = 0; i < this.length; i++) {
+        to[i] = from[i];
+      }
+    }
+
     DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
       // return [R, G, B, A]
       // assume no dyes => full transparent
@@ -119,6 +125,10 @@
         WaterAbsorptionRate: 0.1,
                       clone: function(){ return new Paperspot(this.dyeAmounts, this.waterAmount); },
                   stringify: function(){ return JSON.stringify(this); },
+                       copy: function(from){
+                         this.waterAmount = from.waterAmount;
+                         DYES.copyAmounts(from.dyeAmounts, this.dyeAmounts);
+                       },
       };
     })();
 
@@ -142,14 +152,18 @@
            }
            return this;
          },
-         divideBy: function(n){
+          divideBy: function(n){
           this.waterAmount = this.waterAmount/n;
           for (var i = 0; i < this.dyeAmounts.length; i++) {
             this.dyeAmounts[i] = this.dyeAmounts[i] / n;
           }
           return this;
         },
-        stringify: function(){ return JSON.stringify(this); },
+         stringify: function(){ return JSON.stringify(this); },
+              copy: function(from){
+               this.waterAmount = from.waterAmount;
+               DYES.copyAmounts(from.dyeAmounts, this.dyeAmounts);
+              },
       };
     })();
 
@@ -186,6 +200,10 @@
               clone: function(){ return new CellSpot(this.paperSpot, this.waterSpot); },
          addDroplet: function(drop){ this.waterSpot.addDroplet(drop); },
           stringify: function(){ return JSON.stringify(this); },
+               copy: function(from){
+                 this.paperSpot.copy(from.paperSpot);
+                 this.waterSpot.copy(from.waterSpot);
+               },
       };
     })();
 
@@ -217,6 +235,7 @@
 
       const spotsWithCoords = [];
 
+      // record any x,y that is within the radius of the centre
       for (var x=fromX; x<=toX; x++) {
         for (var y=fromY; y<=toY; y++) {
           const dx = x - centreX;
@@ -240,6 +259,16 @@
     };
 
     //------------
+    // add a stepCount
+    // loop over the list, reset each cell and add to the cell.value
+
+    CAWorld.prototype.stepWithCount = function() {
+      if( !this.stepCount ){ this.stepCount = 0; }
+      this.stepCount = this.stepCount + 1;
+      this.step();
+    };
+
+    //------------
 
     function createWorldOfBlottingPaperAndDyes(width, height) {
     	world = new CAWorld({
@@ -258,18 +287,42 @@
     		process: function (neighbors) {
           // do clever flow stuff here
 
-          // starting with ...
-          // any water dye goes straight into the paper
-
-          for (var i = 0; i < world.numDyes; i++) {
-            this.next.paperSpot.dyeAmounts[i] = this.value.paperSpot.dyeAmounts[i] + this.next.waterSpot.dyeAmounts[i];
-            this.next.waterSpot.dyeAmounts[i] = 0;
-          }
+          // // starting with ...
+          // // any water dye goes straight into the paper
+          //
+          // for (var i = 0; i < world.numDyes; i++) {
+          //   this.next.paperSpot.dyeAmounts[i] = this.value.paperSpot.dyeAmounts[i] + this.next.waterSpot.dyeAmounts[i];
+          //   this.next.waterSpot.dyeAmounts[i] = 0;
+          // }
 
           // - some of the current surface water (plus the associated dyes) get absorbed
           //    - capacity of paper
           //    - Rf for the dyes? Dyes get concentrated in remaining/reducing surface water?
           //    - some dyes get absorbed 'deeper' into the paper?
+
+          if (this.x == 0 && this.y == 0) {
+            console.log(`DEBUG: process: step ${world.stepCount}: (${this.x},${this.y}),
+            this.value=${this.value.stringify()},
+            this.next=${this.next.stringify()}`);
+          }
+
+          this.next.copy(this.value);
+          if (this.value.paperSpot.waterAmount < this.value.paperSpot.MaxWaterCapacity) {
+            if (this.value.waterSpot.waterAmount > 0) {
+              const waterAmountToBeAbsorbed = Math.min(this.value.waterSpot.waterAmount, this.value.waterSpot.WaterAbsorptionRate);
+              const proportionWaterAmountToBeAbsorbed = (this.value.waterSpot.waterAmount == 0)? 1.0 : (waterAmountToBeAbsorbed / this.value.waterSpot.waterAmount);
+              // transfer water: add to paper, remove from water
+              this.next.paperSpot.waterAmount = this.next.paperSpot.waterAmount + waterAmountToBeAbsorbed;
+              this.next.waterSpot.waterAmount = this.next.waterSpot.waterAmount - waterAmountToBeAbsorbed;
+              // transfer dyes: add to paper, remove from water
+              for (var d = 0; d < DYES.length; d++) {
+                const  flowAmount = proportionWaterAmountToBeAbsorbed * this.value.waterSpot.dyeAmounts[d] * DYES[d].Rf;
+                this.next.paperSpot.dyeAmounts[d] = this.next.paperSpot.dyeAmounts[d] + flowAmount;
+                this.next.waterSpot.dyeAmounts[d] = this.next.waterSpot.dyeAmounts[d] + flowAmount;
+              }
+            }
+          }
+
           // - remaining surface water can flow from/to here, taking into account
           //    - from high to low amounts
           //    - a slope
@@ -325,6 +378,8 @@
         this.value = new CellSpot();
         this.prev  = new CellSpot();
     		this.next  = new CellSpot();
+        this.x = x;
+        this.y = y;
     	});
 
     	world.initialize([
@@ -362,14 +417,16 @@
 
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
-            world.step();
+            world.stepWithCount();
             let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world.grid);
             DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
             context.putImageData(imageData, 0, 0);
 
             world.addBigDrop(
-              world.width  * Math.random(),
-              world.height * Math.random(),
+              // world.width  * Math.random(),
+              // world.height * Math.random(),
+              0,
+              0,
               10+(Math.random()*20),
               WaterSpot.createBigRandomDrop()
             );
