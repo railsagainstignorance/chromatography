@@ -75,7 +75,7 @@
 
     DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
       // return [R, G, B, A]
-      // assume no dyes => full transparent
+      // assume no dyes => full white
 
       // calc 0-1.0 range, then convert to 0-255 later
       var rgba01 = new Array(3).fill(0);
@@ -92,7 +92,10 @@
         maxRGB01 = 1.0;
       }
       rgba01.push(maxRGB01);
-
+      if (maxRGB01 == 0) {
+        rgba01.fill(1.0);
+      }
+      
       var rgba = rgba01.map(c => {return (c>1.0)? 255 : Math.floor(c * 255);});
       return rgba;
     }
@@ -644,7 +647,7 @@
       const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorder.ondataavailable = download;
       mediaRecorder.start();
-      // window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
+      window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
     }
 
     {
