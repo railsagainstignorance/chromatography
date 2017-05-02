@@ -635,8 +635,9 @@
 
             if ((numIterations % batchSize == 0) || numIterations==1 ) {
               let nowMillis = Date.now();
-              let rate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
-              console.log(`iteration=${numIterations}, frames/s=${rate.toFixed(2)}`);
+              let frameRate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
+              let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
+              console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}`);
               let totals = calcDyeAndWaterTotalsInWorld(world);
               totalsList.push(totals);
               if (numIterations != 1) {
@@ -656,10 +657,11 @@
               window.requestAnimationFrame(iterateAndDisplayWorld);
             } else {
               let nowMillis = Date.now();
-              let rate = (numIterations - 1) / ((nowMillis - startOverallRunTimeMillis) / 1000);
+              let frameRate = (numIterations - 1) / ((nowMillis - startOverallRunTimeMillis) / 1000);
+              let pixelRate = (numIterations - 1) * world.width * world.height / ((nowMillis - startOverallRunTimeMillis) / 1000);
               let totals = calcDyeAndWaterTotalsInWorld(world);
               totalsList.push(totals);
-              console.log(`ending on world iteration=${numIterations} of ${maxIterations}, frames/s=${rate.toFixed(2)}`);
+              console.log(`ending on world iteration=${numIterations} of ${maxIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}`);
               // console.log(`     totals=${JSON.stringify(totals)}`);
               let relative=false;
               const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
