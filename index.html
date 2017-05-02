@@ -626,6 +626,30 @@
           // console.log(`     totals=${JSON.stringify(totals)}`);
           const totalsList = [];
 
+          function calcAndDisplayTotals(relative=true){
+            let fromTimeMillis = (relative)? startBatchRunTimeMillis : startBatchRunTimeMillis;
+            let fromIndex      = (relative)? totalsList.length - 2   : 0;
+
+            let nowMillis = Date.now();
+            let frameRate = batchSize / ((nowMillis - fromTimeMillis) / 1000);
+            let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
+            console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}`);
+            let totals = calcDyeAndWaterTotalsInWorld(world);
+            totalsList.push(totals);
+            if (totalsList.length > 1) {
+              const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
+              if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
+                console.log(`WARNING: delta error > ${minAcceptableDelta}
+                  prev: ${JSON.stringify(totalsList[fromIndex])}
+                  last: ${JSON.stringify(totalsList[totalsList.length - 1])}`);
+                  console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
+              }
+              if (relative) {
+                startBatchRunTimeMillis = nowMillis;
+              }
+            }
+          }
+
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.stepWithCount();
@@ -634,43 +658,16 @@
             context.putImageData(imageData, 0, 0);
 
             if ((numIterations % batchSize == 0) || numIterations==1 ) {
-              let nowMillis = Date.now();
-              let frameRate = batchSize / ((nowMillis - startBatchRunTimeMillis) / 1000);
-              let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
-              console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}`);
-              let totals = calcDyeAndWaterTotalsInWorld(world);
-              totalsList.push(totals);
-              if (numIterations != 1) {
-                const totalsDelta = calcDyeAndWaterTotalDelta(totalsList);
-                if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
-                  console.log(`WARNING: delta error > ${minAcceptableDelta}
-                    first: ${JSON.stringify(totalsList[0])}
-                    last: ${JSON.stringify(totalsList[totalsList.length - 1])}`);
-                    console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
-                }
-                startBatchRunTimeMillis = nowMillis;
-              }
+              calcAndDisplayTotals();
             }
 
             numIterations = numIterations + 1;
             if (numIterations < maxIterations) {
               window.requestAnimationFrame(iterateAndDisplayWorld);
             } else {
-              let nowMillis = Date.now();
-              let frameRate = (numIterations - 1) / ((nowMillis - startOverallRunTimeMillis) / 1000);
-              let pixelRate = (numIterations - 1) * world.width * world.height / ((nowMillis - startOverallRunTimeMillis) / 1000);
-              let totals = calcDyeAndWaterTotalsInWorld(world);
-              totalsList.push(totals);
-              console.log(`ending on world iteration=${numIterations} of ${maxIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}`);
-              // console.log(`     totals=${JSON.stringify(totals)}`);
-              let relative=false;
-              const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
-              console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
-              if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
-                console.log(`WARNING: delta error > ${minAcceptableDelta}
-                  first: ${JSON.stringify(totalsList[0])}
-                  last: ${JSON.stringify(totalsList[totalsList.length - 1])}`);
-              }
+              const relative = true;
+              calcAndDisplayTotals(!relative);
+              console.log(`iterations ended.`);
               window.dispatchEvent( new Event('StopRecording') );
             }
           }
