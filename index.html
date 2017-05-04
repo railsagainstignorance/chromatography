@@ -280,8 +280,50 @@
     CAWorld.prototype.stepWithCount = function() {
       if( !this.stepCount ){ this.stepCount = 0; }
       this.stepCount = this.stepCount + 1;
-      this.step();
+      this.stepThroughAllProcesses();
     };
+
+    CAWorld.prototype.resetGrid = function() {
+  		var y, x;
+  		for (y=0; y<this.height; y++) {
+  			for (x=0; x<this.width; x++) {
+  				this.grid[y][x].reset();
+  			}
+  		}
+    }
+
+    var neighborhood = [null, null, null, null, null, null, null, null];
+
+    CAWorld.prototype.stepThroughProcess = function(processName) {
+      this.resetGrid();
+
+  		// bottom up, left to right processing
+  		for (y=this.height-1; y>=0; y--) {
+  			for (x=this.width-1; x>=0; x--) {
+  				this.fillNeighbors(neighborhood, x, y);
+  				var cell = this.grid[y][x];
+  				cell[processName](neighborhood);
+
+  				// perform any delays
+  				for (var i=0; i<cell.delays.length; i++) {
+  					cell.delays[i].steps--;
+  					if (cell.delays[i].steps <= 0) {
+  						// perform action and remove delay
+  						cell.delays[i].action(cell);
+  						cell.delays.splice(i, 1);
+  						i--;
+  					}
+  				}
+  			}
+  		}
+  	};
+
+    CAWorld.prototype.stepThroughAllProcesses = function() {
+      ['absorb'].forEach(name => {
+        this.stepThroughProcess(name);
+      });
+    }
+
 
     //------------
 
@@ -313,6 +355,49 @@
         getCellNextValue: function () {
           return this.next;
     		},
+        sanityCheckValue: function() {
+          function thisError(msg){
+            throw new Error(`ERROR: (${this.x}, ${this.y}): ${msg}`);
+          }
+          if (thisValuePaperSpot.waterAmount < 0) { thisError(`thisValuePaperSpot.waterAmount < 0, ${thisValuePaperSpot.waterAmount}`); }
+          if (thisValueWaterSpot.waterAmount < 0) { thisError(`thisValueWaterSpot.waterAmount < 0, ${thisValueWaterSpot.waterAmount}`); }
+          for (var d = 0; d < DYES.length; d++) {
+            if (thisValuePaperSpot.dyeAmounts[d] < 0) { thisError(`thisValuePaperSpot.dyeAmounts[${d}]<0, ${thisValuePaperSpot.dyeAmounts[d]}`); }
+            if (thisValueWaterSpot.dyeAmounts[d] < 0) { thisError(`thisValueWaterSpot.dyeAmounts[${d}]<0, ${thisValueWaterSpot.dyeAmounts[d]}`); }
+          }
+        },
+        absorb: function (neighbors) {
+          // - some of the current surface water (plus the associated dyes) get absorbed
+          //    - capacity of paper
+          //    - Rf for the dyes? Dyes get concentrated in remaining/reducing surface water?
+          //    - some dyes get absorbed 'deeper' into the paper?
+
+          const thisNextWaterSpot  = this.next.waterSpot;
+          const thisNextPaperSpot  = this.next.paperSpot;
+          const thisValueWaterSpot = this.value.waterSpot;
+          const thisValuePaperSpot = this.value.paperSpot;
+
+          if (thisValueWaterSpot.waterAmount > 0) {
+            const remainingPaperWaterCapacity = thisValuePaperSpot.MaxWaterCapacity - thisValuePaperSpot.waterAmount;
+            if (remainingPaperWaterCapacity > 0) {
+              const waterAmountToBeAbsorbed = Math.min(thisValueWaterSpot.waterAmount, thisValuePaperSpot.WaterAbsorptionRate, remainingPaperWaterCapacity);
+              const proportionWaterAmountToBeAbsorbed = (waterAmountToBeAbsorbed / thisValueWaterSpot.waterAmount);
+              // transfer water: add to paper, remove from water
+              thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterAmountToBeAbsorbed;
+              thisNextWaterSpot.waterAmount = thisNextWaterSpot.waterAmount - waterAmountToBeAbsorbed;
+
+              // transfer dyes: add to paper, remove from water
+              for (var d = 0; d < DYES.length; d++) {
+                const flowProportion = (proportionWaterAmountToBeAbsorbed == 1)? 1 : proportionWaterAmountToBeAbsorbed * DYES[d].Rf;
+                const flowAmount = flowProportion * thisValueWaterSpot.dyeAmounts[d];
+                thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + flowAmount;
+                thisNextWaterSpot.dyeAmounts[d] = thisNextWaterSpot.dyeAmounts[d] - flowAmount;
+              }
+            }
+          }
+
+          return true;
+        },
     		process: function (neighbors) {
           // do clever flow stuff here
 
@@ -633,7 +718,8 @@
           let oldPrev = this.prev; // don't discard the old value
   				this.prev   = this.value;
   				this.value  = this.next;
-          this.next   = oldPrev;   // assuming the old value gets fully overwritten
+          this.next   = oldPrev;
+          this.next.copy(this.value); // so adds and deletes happen in the .next value
     			return true;
     		}
     	}, function (x,y) {
