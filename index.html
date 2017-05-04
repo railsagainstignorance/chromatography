@@ -319,7 +319,7 @@
   	};
 
     CAWorld.prototype.stepThroughAllProcesses = function() {
-      ['absorb', 'surfaceFlow'].forEach(name => {
+      ['absorb', 'surfaceFlow', 'capillaryFlow'].forEach(name => {
         this.stepThroughProcess(name);
       });
     }
@@ -482,6 +482,47 @@
           flowWithNhbr(world.TOP        , 1/ world.SpreadSlopeFactor              );
           flowWithNhbr(world.TOPLEFT    , 1/(world.SpreadSlopeFactor * Math.SQRT2));
           flowWithNhbr(world.TOPRIGHT   , 1/(world.SpreadSlopeFactor * Math.SQRT2));
+
+          return true;
+        },
+    		capillaryFlow: function (neighbors) {
+          // -  water in paper will flow by capillary action, from high moisture to low
+          //    - taking with it some dyes
+          //    - only flows from/to a extant nhbr
+
+          const thisNextPaperSpot  = this.next.paperSpot;
+          const thisValuePaperSpot = this.value.paperSpot;
+
+          const remainingPaperWaterCapacity = thisValuePaperSpot.MaxWaterCapacity - thisValuePaperSpot.waterAmount;
+          for (direction of world.directions) {
+            let nhbr = neighbors[direction.index];
+            if (!nhbr) { continue; }
+            let nhbrValuePaperSpot = nhbr.value.paperSpot;
+            let deltaWaterAmount = (thisValuePaperSpot.waterAmount - nhbrValuePaperSpot.waterAmount);
+            let deltaWaterAmountScaled = deltaWaterAmount / (2 * 8);
+            // +ve means from here, -ve from nhbr
+            if (remainingPaperWaterCapacity > 0 && deltaWaterAmountScaled < 0) {
+              let waterFlowAmount = Math.min(( - deltaWaterAmountScaled), remainingPaperWaterCapacity);
+              thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterFlowAmount;
+              let waterFlowProportion = waterFlowAmount / nhbrValuePaperSpot.waterAmount;
+              for (var d = 0; d < DYES.length; d++) {
+                let dyeFlowAmount = waterFlowProportion * DYES[d].Rf * nhbrValuePaperSpot.dyeAmounts[d];
+                thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + dyeFlowAmount;
+              }
+            } else if(deltaWaterAmountScaled > 0) {
+              let nhbrRemainingPaperWaterCapacity = nhbrValuePaperSpot.MaxWaterCapacity - nhbrValuePaperSpot.waterAmount;
+              if (nhbrRemainingPaperWaterCapacity > 0) {
+                let waterFlowAmount = Math.min(deltaWaterAmountScaled, nhbrRemainingPaperWaterCapacity);
+                thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - waterFlowAmount;
+                let waterFlowProportion = waterFlowAmount / thisValuePaperSpot.waterAmount;
+                for (var d = 0; d < DYES.length; d++) {
+                  let dyeFlowAmount = waterFlowProportion * DYES[d].Rf * thisValuePaperSpot.dyeAmounts[d];
+                  thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] - dyeFlowAmount;
+                }
+              }
+            }
+
+          }
 
           return true;
         },
