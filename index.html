@@ -324,7 +324,6 @@
       });
     }
 
-
     //------------
 
     function createWorldOfBlottingPaperAndDyes(width, height) {
@@ -758,15 +757,15 @@
             WaterSpot.createBigRandomDrop()
           );
 
-          const numDropsAcross = 5;
+          const numDropsAcross = 10;
           const dropSpacing = world.width / (numDropsAcross+1);
           for (var i = 0; i < numDropsAcross; i++) {
-            world.addBigDrop(
-              (1+i) * dropSpacing,
-              world.height / 4,
-              2+(Math.random()*dropSpacing),
-              WaterSpot.createBigRandomDrop(1000)
-            );
+            let x = world.width * Math.random();
+            let y = world.height * Math.random();
+            let r = 2+(Math.random()*world.width)/3;
+            let h = 0.1 + Math.random()*4;
+            let v = Math.PI * r * r * h;
+            world.addBigDrop(x, y, r, WaterSpot.createBigRandomDrop(v));
           }
 
           iterateAndDisplayWorld();
@@ -792,7 +791,7 @@
   <script>
   (function(){
     const codeVersion = '2-0'; // affects filename of recording
-    const maxIterations = 200;
+    const maxIterations = 2000;
 
     const canvas = document.getElementById('myCanvas');
     const context = canvas.getContext('2d');
