@@ -319,7 +319,7 @@
   	};
 
     CAWorld.prototype.stepThroughAllProcesses = function() {
-      ['absorb'].forEach(name => {
+      ['absorb', 'surfaceFlow'].forEach(name => {
         this.stepThroughProcess(name);
       });
     }
@@ -395,6 +395,93 @@
               }
             }
           }
+
+          return true;
+        },
+    		surfaceFlow: function (neighbors) {
+          // - remaining surface water can flow (and splodge) from/to here, taking into account
+          //    - when both cells are wet, flow towards midpoint of water amounts
+          //    - when both cells are dry, nothing happens
+          //    - when one cell is wet, the other dry, the wet one flows into the dry one if there is a min amount
+          //    - if there is a slope, the min amount is adjusted accordingly (down for downhill, up for uphill)
+          //    - dividing any amounts by 8
+          //    - surface characteristics? could adjust the min height amount...
+          //    - dyes flow in the same proportion as the water
+
+          const thisNextWaterSpot  = this.next.waterSpot;
+          const thisNextPaperSpot  = this.next.paperSpot;
+          const thisValueWaterSpot = this.value.waterSpot;
+          const thisValuePaperSpot = this.value.paperSpot;
+
+          function flowWithNhbr(direction, factorForMinHeight){
+            // factorForMinHeight is factor when calculated from this cell.
+            // - to multiply world.SpreadMinAmountToGoToDry
+            // - Invert if from nhbr.
+
+            const nhbr = neighbors[direction.index];
+
+            // return as soon as we work out no flow will happen
+
+            let nhbrValueWaterSpot;
+            let nhbrValueWaterSpotWaterAmount = 0;
+            if (nhbr) {
+              nhbrValueWaterSpot            = nhbr.value.waterSpot;
+              nhbrValueWaterSpotWaterAmount = nhbrValueWaterSpot.waterAmount;
+            }
+            // skip if both cells are dry, or here is dry and there is no nhbr
+            if ((thisValueWaterSpot.waterAmount == 0) && ((!nhbr) || (nhbrValueWaterSpotWaterAmount == 0))) {
+              return;
+            }
+
+            // return if either nhbr is empty, and the other is not wet enough
+            if (thisValueWaterSpot.waterAmount == 0) {
+              if (nhbrValueWaterSpotWaterAmount <= (world.SpreadMinAmountToGoToDry / factorForMinHeight)) {
+                return;
+              }
+            } else if (nhbrValueWaterSpotWaterAmount == 0) {
+              if (thisValueWaterSpot.waterAmount <= (world.SpreadMinAmountToGoToDry * factorForMinHeight) ) {
+                return;
+              }
+            }
+
+            // The amount to flow is half the difference,
+            // divided by 8 because is only one of 8 different here<->nhbr interactions.
+            // +ve means from here, -ve from nhbr.
+            let waterAmountFlowing = (thisValueWaterSpot.waterAmount - nhbrValueWaterSpotWaterAmount) / (2 * 8) ;
+            if (waterAmountFlowing == 0) {
+              return;
+            } else if (waterAmountFlowing > 0) { // from this cell to nhbr, so only record loss from this cell if there is no nhbr
+              const proportionWaterAmountFlowing = waterAmountFlowing / thisValueWaterSpot.waterAmount;
+              thisNextWaterSpot.waterAmount = thisNextWaterSpot.waterAmount - waterAmountFlowing;
+              if(!nhbr) { world.waterSpotLost.waterAmount = world.waterSpotLost.waterAmount + waterAmountFlowing; }
+
+              // transfer dyes: in water
+              for (var d = 0; d < DYES.length; d++) {
+                const dyeAmountFlowing = thisValueWaterSpot.dyeAmounts[d] * proportionWaterAmountFlowing;
+                thisNextWaterSpot.dyeAmounts[d] = thisNextWaterSpot.dyeAmounts[d] - dyeAmountFlowing;
+                if(!nhbr){ world.waterSpotLost.dyeAmounts[d] = world.waterSpotLost.dyeAmounts[d] + dyeAmountFlowing; }
+              }
+            } else { // waterAmountFlowing < 0, flowing from nhbr to this cell
+              const waterAmountFlowingFromNhbr = - waterAmountFlowing;
+              thisNextWaterSpot.waterAmount = thisNextWaterSpot.waterAmount + waterAmountFlowingFromNhbr;
+              // transfer dyes: in water
+              const proportionWaterAmountFlowing = waterAmountFlowingFromNhbr / nhbrValueWaterSpotWaterAmount;
+              for (var d = 0; d < DYES.length; d++) {
+                const dyeAmountFlowing = nhbrValueWaterSpot.dyeAmounts[d] * proportionWaterAmountFlowing;
+                thisNextWaterSpot.dyeAmounts[d] = thisNextWaterSpot.dyeAmounts[d] + dyeAmountFlowing;
+              }
+            }
+          }
+
+          // world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
+          flowWithNhbr(world.LEFT       , 1                                       );
+          flowWithNhbr(world.RIGHT      , 1                                       );
+          flowWithNhbr(world.BOTTOM     ,    world.SpreadSlopeFactor              ); // BOTTOM is down
+          flowWithNhbr(world.BOTTOMLEFT ,    world.SpreadSlopeFactor * Math.SQRT2 );
+          flowWithNhbr(world.BOTTOMRIGHT,    world.SpreadSlopeFactor * Math.SQRT2 );
+          flowWithNhbr(world.TOP        , 1/ world.SpreadSlopeFactor              );
+          flowWithNhbr(world.TOPLEFT    , 1/(world.SpreadSlopeFactor * Math.SQRT2));
+          flowWithNhbr(world.TOPRIGHT   , 1/(world.SpreadSlopeFactor * Math.SQRT2));
 
           return true;
         },
