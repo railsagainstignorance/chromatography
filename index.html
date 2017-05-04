@@ -319,7 +319,7 @@
   	};
 
     CAWorld.prototype.stepThroughAllProcesses = function() {
-      ['absorb', 'surfaceFlow', 'capillaryFlow'].forEach(name => {
+      ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion'].forEach(name => {
         this.stepThroughProcess(name);
       });
     }
@@ -366,7 +366,7 @@
             if (thisValueWaterSpot.dyeAmounts[d] < 0) { thisError(`thisValueWaterSpot.dyeAmounts[${d}]<0, ${thisValueWaterSpot.dyeAmounts[d]}`); }
           }
         },
-        absorb: function (neighbors) {
+        absorption: function (neighbors) {
           // - some of the current surface water (plus the associated dyes) get absorbed
           //    - capacity of paper
           //    - Rf for the dyes? Dyes get concentrated in remaining/reducing surface water?
@@ -522,6 +522,38 @@
               }
             }
 
+          }
+
+          return true;
+        },
+    		diffusion: function (neighbors) {
+          // - ink will diffuse, in wet paper
+          //    - assume is related to relative concentrations, flowing from high to low (where both sides are wet)
+          const thisNextWaterSpot  = this.next.waterSpot;
+          const thisNextPaperSpot  = this.next.paperSpot;
+          const thisValueWaterSpot = this.value.waterSpot;
+          const thisValuePaperSpot = this.value.paperSpot;
+
+          if (thisValuePaperSpot.waterAmount > 0) {
+            for (direction of world.directions) {
+              let nhbr = neighbors[direction.index];
+              if (!nhbr) { continue; }
+              let nhbrValuePaperSpot = nhbr.value.paperSpot;
+              if (nhbrValuePaperSpot.waterAmount <= 0) { continue; }
+
+              for (var d = 0; d < DYES.length; d++) {
+                let thisValueConcentration = thisValuePaperSpot.dyeAmounts[d] / thisValuePaperSpot.waterAmount;
+                let nhbrValueConcentration = nhbrValuePaperSpot.dyeAmounts[d] / nhbrValuePaperSpot.waterAmount;
+                let deltaConcentration = nhbrValueConcentration - thisValueConcentration;
+                if (deltaConcentration > 0) { // dye comes to here
+                  let dyeFlowAmount = DYES[d].Rd * ((deltaConcentration / nhbrValueConcentration) / 2) * nhbrValuePaperSpot.dyeAmounts[d] / 8;
+                  thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + dyeFlowAmount;
+                } else if (deltaConcentration < 0) { // dye goes from here
+                  let dyeFlowAmount = DYES[d].Rd * ((deltaConcentration / thisValueConcentration) / 2) * thisValuePaperSpot.dyeAmounts[d] / 8;
+                  thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + dyeFlowAmount;
+                }
+              }
+            }
           }
 
           return true;
