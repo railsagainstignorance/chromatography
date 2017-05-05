@@ -3,6 +3,19 @@ experimenting with modelling the physics of chromatography in-browser
 
 Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stumbling on [cellauto](http://sanojian.github.io/cellauto/), I fancied a crack at trying to model the physics of chromatography more closely, to see if we could achieve, in-browser, something as lovely as the [FT Labs logo](http://labs.ft.com).
 
+## The plan - part 3
+
+Major refactoring done, so each physical process is handled by its own discrete iteration of the CA. Currently, 'absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation'. Error-checking after each iteration looks for invalid cell values, and overall loss/gain in water or dyes amounts (of which there should be none).
+
+### steps
+
+* start with amounts at 0, and account for added droplets.
+* tidy CA config params into single json obj
+   * allow to be configured on web page
+      * ditto the recording facility
+* create irregular droplets
+* randomise the characteristics of the cells, e.g. water capacity, flow params, etc.
+
 ## The plan - part 2
 
 Well, got something interesting happening, but was hampered by physics of colours, and lack of knowledge thereof, inadequacies of my javascripting.
