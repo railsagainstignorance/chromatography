@@ -77,6 +77,12 @@
       }
     }
 
+    DYES.subtractAmounts = function(from, to){
+      for (var i = 0; i < this.length; i++) {
+        to[i] = to[i] - from[i];
+      }
+    }
+
     DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
       // return [R, G, B, A]
       // assume no dyes => full white
@@ -658,16 +664,15 @@
           DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
           DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
           DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
-          DYES.addAmounts(world.waterDropletsAddedToSurface.dyeAmounts, dyeAmountsTotal);
+          DYES.subtractAmounts(world.waterDropletsAddedToSurface.dyeAmounts, dyeAmountsTotal);
           const dyeAmountTotal = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
           const waterAmountTotal = [
             waterAmountInPaper,
             waterAmountOnSurface,
             world.waterSpotLost.waterAmount,
             world.waterEvaporationFromPaper.waterAmount,
-            world.waterEvaporationFromSurface.waterAmount,
-            world.waterDropletsAddedToSurface.waterAmount
-          ].reduce( (prev, curr) => prev + curr );
+            world.waterEvaporationFromSurface.waterAmount
+          ].reduce( (prev, curr) => prev + curr ) - world.waterDropletsAddedToSurface.waterAmount;
 
           return {
             waterAmountTotal    : waterAmountTotal,
@@ -712,7 +717,7 @@
           let totals = calcDyeAndWaterTotalsInWorld(world);
           console.log(`iteration=0,`);
           // console.log(`     totals=${JSON.stringify(totals)}`);
-          const totalsList = [];
+          const totalsList = [totals];
 
           function calcAndDisplayTotals(relative=true){
             let fromTimeMillis = (relative)? startBatchRunTimeMillis : startBatchRunTimeMillis;

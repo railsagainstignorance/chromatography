@@ -11,12 +11,13 @@ Major refactoring done, so each physical process is handled by its own discrete 
 
 ### steps
 
-* start with amounts at 0, and account for added droplets.
+* start with amounts at 0, and account for added droplets. DONE.
 * tidy CA config params into single json obj
    * allow to be configured on web page
       * ditto the recording facility
 * create irregular droplets
 * randomise the characteristics of the cells, e.g. water capacity, flow params, etc.
+* stop when no water remaining in or on paper. DONE.
 
 ## The plan - part 2
 
