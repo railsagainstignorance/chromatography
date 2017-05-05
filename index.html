@@ -240,6 +240,7 @@
         // cell.reset();
         var cellSpot = cell.next;
         cellSpot.addDroplet(spot.droplet);
+        this.waterDropletsAddedToSurface.addDroplet(spot.droplet);
       }
     };
 
@@ -348,6 +349,8 @@
       world.waterSpotLost = new WaterSpot();
       world.waterEvaporationFromPaper   = new WaterSpot();
       world.waterEvaporationFromSurface = new WaterSpot();
+
+      world.waterDropletsAddedToSurface = new WaterSpot();
 
     	world.registerCellType('paper', {
         getCellValue: function () {
@@ -655,22 +658,26 @@
           DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
           DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
           DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
+          DYES.addAmounts(world.waterDropletsAddedToSurface.dyeAmounts, dyeAmountsTotal);
           const dyeAmountTotal = dyeAmountsTotal.reduce( (prev, curr) => prev + curr );
           const waterAmountTotal = [
             waterAmountInPaper,
             waterAmountOnSurface,
             world.waterSpotLost.waterAmount,
             world.waterEvaporationFromPaper.waterAmount,
-            world.waterEvaporationFromSurface.waterAmount
+            world.waterEvaporationFromSurface.waterAmount,
+            world.waterDropletsAddedToSurface.waterAmount
           ].reduce( (prev, curr) => prev + curr );
 
           return {
             waterAmountTotal    : waterAmountTotal,
             waterAmountInPaper  : waterAmountInPaper,
             waterAmountOnSurface: waterAmountOnSurface,
+            waterAmountInPaperOrOnSurface: waterAmountInPaper + waterAmountOnSurface,
             waterAmountLost     : world.waterSpotLost.waterAmount,
             waterAmountEvaporationFromPaper   : world.waterEvaporationFromPaper.waterAmount,
             waterAmountEvaporationFromSurface : world.waterEvaporationFromSurface.waterAmount,
+            waterDropletsAddedToSurface : world.waterDropletsAddedToSurface.waterAmount,
               dyeAmountTotal    :   dyeAmountTotal,
               dyeAmountsTotal   :   dyeAmountsTotal,
               dyeAmountsInPaper :   dyeAmountsInPaper,
@@ -714,9 +721,9 @@
             let nowMillis = Date.now();
             let frameRate = batchSize / ((nowMillis - fromTimeMillis) / 1000);
             let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
-            console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}`);
             let totals = calcDyeAndWaterTotalsInWorld(world);
             totalsList.push(totals);
+            console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)}`);
             if (totalsList.length > 1) {
               const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
               if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
@@ -743,13 +750,17 @@
             }
 
             numIterations = numIterations + 1;
-            if (numIterations < maxIterations) {
-              window.requestAnimationFrame(iterateAndDisplayWorld);
+            const lastTotals = totalsList[totalsList.length -1];
+            const waterRemaining = lastTotals.waterAmountInPaper + lastTotals.waterAmountOnSurface;
+            if (   (numIterations >= maxIterations)
+                || ((numIterations > batchSize) && (waterRemaining <= 0))
+              ) {
+                const relative = true;
+                calcAndDisplayTotals(!relative);
+                console.log(`iterations ended.`);
+                window.dispatchEvent( new Event('StopRecording') );
             } else {
-              const relative = true;
-              calcAndDisplayTotals(!relative);
-              console.log(`iterations ended.`);
-              window.dispatchEvent( new Event('StopRecording') );
+              window.requestAnimationFrame(iterateAndDisplayWorld);
             }
           }
 
