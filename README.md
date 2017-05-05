@@ -1,6 +1,8 @@
 # chromatography
 experimenting with modelling the physics of chromatography in-browser
 
+This might work: https://railsagainstignorance.github.io/chromatography/
+
 Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stumbling on [cellauto](http://sanojian.github.io/cellauto/), I fancied a crack at trying to model the physics of chromatography more closely, to see if we could achieve, in-browser, something as lovely as the [FT Labs logo](http://labs.ft.com).
 
 ## The plan - part 3
