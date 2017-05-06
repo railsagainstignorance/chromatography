@@ -353,9 +353,44 @@
       });
     }
 
+    CAWorld.prototype.importConfig = function(config) {
+      // loop over keys of defaultConfig, looking for overides in config
+      Object.keys(this.defaultConfig).forEach( key => {
+        const details = this.defaultConfig[key];
+        if (details.hasOwnProperty('value')) {
+          world[key] = details.value;
+
+          function override(key, val) {
+            world[key] = newValue;
+            details.override = newValue;
+          }
+
+          if (config != undefined) {
+            const newValue = config[key];
+            if (newValue != undefined ) {
+              if (details.range) {
+                if (details.range[0] <= newValue && newValue <= details.range[1]) {
+                  override(key, newValue);
+                } else {
+                  console.log(`WARNING: world: config: override value specified for ${key}, ${newValue}, falls outside of permitted range, ${details.range}`)
+                }
+              } else if (details.known) {
+                const knownInNewValue = newValue.filter(v => { return details.known.includes(v) });
+                if (knownInNewValue.length > 0) {
+                  override(key, newValue);
+                }
+              }
+            }
+          }
+        }
+      });
+
+      console.log(`world: config=${JSON.stringify(this.defaultConfig, null, " ")}`);
+    }
+
     //------------
 
-    function createWorldOfBlottingPaperAndDyes(width, height, config={ EvaporationFromSurfaceRate: -1}) {
+    function createWorldOfBlottingPaperAndDyes(width, height, config={}) {
     	world = new CAWorld({
     		width: Math.floor(width),
     		height: Math.floor(height),
@@ -425,38 +460,7 @@
         },
       };
 
-      // loop over keys of defaultConfig, looking for overides in config
-      Object.keys(world.defaultConfig).forEach( key => {
-        const details = world.defaultConfig[key];
-        if (details.hasOwnProperty('value')) {
-          world[key] = details.value;
-
-          function override(key, val) {
-            world[key] = newValue;
-            details.override = newValue;
-          }
-
-          if (config != undefined) {
-            const newValue = config[key];
-            if (newValue != undefined ) {
-              if (details.range) {
-                if (details.range[0] <= newValue && newValue <= details.range[1]) {
-                  override(key, newValue);
-                } else {
-                  console.log(`WARNING: world: config: override value specified for ${key}, ${newValue}, falls outside of permitted range, ${details.range}`)
-                }
-              } else if (details.known) {
-                const knownInNewValue = newValue.filter(v => { return details.known.includes(v) });
-                if (knownInNewValue.length > 0) {
-                  override(key, newValue);
-                }
-              }
-            }
-          }
-        }
-      });
-
-      console.log(`world: config=${JSON.stringify(world.defaultConfig, null, " ")}`);
+      world.importConfig( config );
 
     	world.registerCellType('paper', {
         getCellValue: function () {
