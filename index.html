@@ -201,7 +201,7 @@
       return drop;
     }
 
-    WaterSpot.createBigRandomDrop = function(volume=1000) {
+    WaterSpot.createBigRandomDrop = function(volume=1) {
       const waterAmount = volume;
       const dyeAmounts = DYES.newEmptyDyeAmounts();
       for (var i = 0; i < dyeAmounts.length; i++) {
@@ -348,7 +348,7 @@
 
     CAWorld.prototype.stepThroughAllProcesses = function() {
 
-      this.processes.forEach( name => {
+      this.Processes.forEach( name => {
         this.stepThroughProcess(name);
       });
     }
@@ -360,8 +360,6 @@
     		width: Math.floor(width),
     		height: Math.floor(height),
     	});
-
-      world.processes = ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'];
 
       world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
       // tracking loss/gain of substance (rather than moved between cells)
@@ -415,6 +413,16 @@
                 range : [0, 1],
           description : 'modify the diffusion flow rate across the whole paper surface'
         },
+        WaterDiffusionFactor : {
+                value : 0.5,
+                range : [0, 1],
+          description : 'modify the diffusion flow rate across the whole paper surface'
+        },
+        Processes : {
+                value : ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+                known : ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+          description : 'the sequence of physical processes to run in turn on the grid',
+        },
       };
 
       // loop over keys of defaultConfig, looking for overides in config
@@ -423,15 +431,24 @@
         if (details.hasOwnProperty('value')) {
           world[key] = details.value;
 
+          function override(key, val) {
+            world[key] = newValue;
+            details.override = newValue;
+          }
+
           if (config != undefined) {
             const newValue = config[key];
             if (newValue != undefined ) {
               if (details.range) {
                 if (details.range[0] <= newValue && newValue <= details.range[1]) {
-                  world[key] = newValue;
-                  details.override = newValue;
+                  override(key, newValue);
                 } else {
                   console.log(`WARNING: world: config: override value specified for ${key}, ${newValue}, falls outside of permitted range, ${details.range}`)
+                }
+              } else if (details.known) {
+                const knownInNewValue = newValue.filter(v => { return details.known.includes(v) });
+                if (knownInNewValue.length > 0) {
+                  override(key, newValue);
                 }
               }
             }
@@ -840,7 +857,7 @@
             }
             {
               console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)}`);
-              const processTimings = world.processes.map(name => {
+              const processTimings = world.Processes.map(name => {
                 const timingsList = world.processTimings[name];
                 const lastFew = timingsList.slice(- batchSize);
                 const avg = lastFew.reduce( (prev, curr) => prev + curr ) / lastFew.length;
@@ -885,14 +902,14 @@
             WaterSpot.createBigRandomDrop()
           );
 
-          const numDropsAcross = 10;
+          const numDropsAcross = 20;
           const dropSpacing = world.width / (numDropsAcross+1);
           for (var i = 0; i < numDropsAcross; i++) {
             let x = world.width * Math.random();
             let y = world.height * Math.random();
             let r = 2+(Math.random()*world.width)/3;
             let h = 0.1 + Math.random()*4;
-            let v = Math.PI * r * r * h;
+            let v = 1000;
             world.addBigDrop(x, y, r, WaterSpot.createBigRandomDrop(v));
           }
 
