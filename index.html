@@ -604,11 +604,12 @@
           //    - assume is related to relative concentrations, flowing from high to low (where both sides are wet)
 
           // within wet paper, and on wet surface
-          [
+          for (let params of [
             // [spotType, diffusionFactor]
             ['paperSpot', world.PaperDiffusionFactor],
             ['waterSpot', world.WaterDiffusionFactor]
-          ].forEach(params => {
+          ]) {
+
             const        spotType = params[0];
             const diffusionFactor = params[1];
 
@@ -638,7 +639,7 @@
                 }
               }
             }
-          })
+          }
 
           return true;
         },
