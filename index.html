@@ -65,6 +65,10 @@
       return new Array(this.length).fill(0);
     }
 
+    DYES.cloneAmounts = function(from) {
+      return from.slice(0);
+    }
+
     DYES.copyAmounts = function(from, to){
       for (var i = 0; i < this.length; i++) {
         to[i] = from[i];
@@ -361,8 +365,8 @@
           world[key] = details.value;
 
           function override(key, val) {
-            world[key] = newValue;
-            details.override = newValue;
+            world[key] = val;
+            details.override = val;
           }
 
           if (config != undefined) {
@@ -744,7 +748,7 @@
 
     function createPaper(canvas, maxIterations=100){
 
-        function convertWorldGridToGridOfDyeAmounts(world){
+        function convertWorldGridToGridOfDyeAmounts(world, spotType='paperSpot'){
           var worldGrid = world.grid;
           var gridOfDyeAmounts = [];
 
@@ -755,7 +759,15 @@
             var col = [];
             gridOfDyeAmounts.push(col);
             for (var y = 0; y < world.height; y++) {
-              col.push( worldGrid[y][x].getCellValue().paperSpot.dyeAmounts);
+              const cellValue = worldGrid[y][x].getCellValue();
+              let dyeAmounts;
+              if (spotType == 'paperSpot' || spotType == 'waterSpot') {
+                dyeAmounts = cellValue[spotType].dyeAmounts;
+              } else {
+                dyeAmounts = DYES.cloneAmounts(cellValue.paperSpot.dyeAmounts);
+                DYES.addAmounts(cellValue.waterSpot.dyeAmounts, dyeAmounts);
+              }
+              col.push( dyeAmounts );
             }
           }
 
@@ -825,7 +837,9 @@
           const context = canvas.getContext('2d');
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height);
+          const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, {
+            // Processes : ['surfaceFlow', 'sanityCheckValue']
+          });
 
           let numIterations=1;
           let batchSize = 10;
@@ -875,7 +889,7 @@
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.stepWithCount();
-            let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world);
+            let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, 'cellSpot');
             DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
             context.putImageData(imageData, 0, 0);
 
