@@ -372,6 +372,11 @@
                 range : [0, ARBITRARY_MAX],
           description : "if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor"
         },
+        PaperAbsorptionFactor : {
+                value : 0.5,
+                range : [0, 1],
+          description : 'modify the water absorption rate across the whole paper'
+        }
       };
 
       // loop over keys of defaultConfig, looking for overides in config
@@ -433,7 +438,7 @@
           if (thisValueWaterSpot.waterAmount > 0) {
             const remainingPaperWaterCapacity = thisValuePaperSpot.MaxWaterCapacity - thisValuePaperSpot.waterAmount;
             if (remainingPaperWaterCapacity > 0) {
-              const waterAmountToBeAbsorbed = Math.min(thisValueWaterSpot.waterAmount, thisValuePaperSpot.WaterAbsorptionRate, remainingPaperWaterCapacity);
+              const waterAmountToBeAbsorbed = Math.min(thisValueWaterSpot.waterAmount, thisValuePaperSpot.WaterAbsorptionRate, remainingPaperWaterCapacity) * world.PaperAbsorptionFactor;
               const proportionWaterAmountToBeAbsorbed = (waterAmountToBeAbsorbed / thisValueWaterSpot.waterAmount);
               // transfer water: add to paper, remove from water
               thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterAmountToBeAbsorbed;
