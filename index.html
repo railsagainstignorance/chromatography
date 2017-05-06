@@ -388,7 +388,7 @@
           description : 'modify the diffusion flow rate across the whole paper'
         },
         WaterDiffusionFactor : {
-                value : 1,
+                value : 0.5,
                 range : [0, 1],
           description : 'modify the diffusion flow rate across the whole paper surface'
         },
@@ -416,7 +416,7 @@
         }
       });
 
-      console.log(`world: config=${JSON.stringify(world.defaultConfig)}`);
+      console.log(`world: config=${JSON.stringify(world.defaultConfig, null, " ")}`);
 
     	world.registerCellType('paper', {
         getCellValue: function () {
@@ -606,7 +606,8 @@
           // within wet paper, and on wet surface
           [
             // [spotType, diffusionFactor]
-            ['paperSpot', world.PaperDiffusionFactor]
+            ['paperSpot', world.PaperDiffusionFactor],
+            ['waterSpot', world.WaterDiffusionFactor]
           ].forEach(params => {
             const        spotType = params[0];
             const diffusionFactor = params[1];
