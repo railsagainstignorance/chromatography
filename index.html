@@ -337,26 +337,44 @@
 
     //------------
 
-    function createWorldOfBlottingPaperAndDyes(width, height) {
+    function createWorldOfBlottingPaperAndDyes(width, height, config) {
     	world = new CAWorld({
     		width: Math.floor(width),
     		height: Math.floor(height),
     	});
 
       world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
+      // tracking loss/gain of substance (rather than moved between cells)
+      world.waterSpotLost = new WaterSpot();
+      world.waterEvaporationFromPaper   = new WaterSpot();
+      world.waterEvaporationFromSurface = new WaterSpot();
+      world.waterDropletsAddedToSurface = new WaterSpot(); // to be subtracted from the final totals
 
-      world.EvaporationFromPaperRate   = 0.01;
-      world.EvaporationFromSurfaceRate = 0.005;
+      world.defaultConfig = {
+        EvaporationFromPaperRate : {
+                value : 0.01,
+                range : [0, 1000],
+          description : 'max amount of absorbed water which will evaporate from the paper',
+        },
+        EvaporationFromSurfaceRate : {
+                value : 0.005,
+                range : [0, 1000],
+          description : 'max amount of surface water which will evaoprate from the paper',
+        }
+      }
+
+      for (let [key, details] of world.defaultConfig) {
+        if (details.hasOwnProperty('value')) {
+          world[key] = details.value;
+        }
+      }
+
+      // world.EvaporationFromPaperRate   = 0.01;
+      // world.EvaporationFromSurfaceRate = 0.005;
 
       world.SpreadMinAmountToGoToDry = 0.01; // cell needs a min amount of surface water before spreading to a dry cell
       world.SpreadSlopeFactor = 0.1;          // if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor
 
-      // tracking loss of substance (rather than moved between cells)
-      world.waterSpotLost = new WaterSpot();
-      world.waterEvaporationFromPaper   = new WaterSpot();
-      world.waterEvaporationFromSurface = new WaterSpot();
-
-      world.waterDropletsAddedToSurface = new WaterSpot();
 
     	world.registerCellType('paper', {
         getCellValue: function () {
