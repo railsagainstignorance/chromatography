@@ -303,34 +303,52 @@
   		}
     }
 
+    CAWorld.prototype.addProcessTiming = function(name, timing) {
+      if (! this.processTimings.hasOwnProperty(name)) {
+        this.processTimings[name] = [];
+      }
+
+      this.processTimings[name].push(timing);
+    }
+
     var neighborhood = [null, null, null, null, null, null, null, null];
 
     CAWorld.prototype.stepThroughProcess = function(processName) {
-      this.resetGrid();
+      {
+        const startGridMillis = Date.now();
+        this.resetGrid();
+        const endGridMillis = Date.now();
+        this.addProcessTiming('resetGrid', endGridMillis - startGridMillis);
+      }
+      {
+        const startProcessMillis = Date.now();
+    		// bottom up, left to right processing
+    		for (y=this.height-1; y>=0; y--) {
+    			for (x=this.width-1; x>=0; x--) {
+    				this.fillNeighbors(neighborhood, x, y);
+    				var cell = this.grid[y][x];
+    				cell[processName](neighborhood);
 
-  		// bottom up, left to right processing
-  		for (y=this.height-1; y>=0; y--) {
-  			for (x=this.width-1; x>=0; x--) {
-  				this.fillNeighbors(neighborhood, x, y);
-  				var cell = this.grid[y][x];
-  				cell[processName](neighborhood);
-
-  				// perform any delays
-  				for (var i=0; i<cell.delays.length; i++) {
-  					cell.delays[i].steps--;
-  					if (cell.delays[i].steps <= 0) {
-  						// perform action and remove delay
-  						cell.delays[i].action(cell);
-  						cell.delays.splice(i, 1);
-  						i--;
-  					}
-  				}
-  			}
-  		}
+    				// perform any delays
+    				for (var i=0; i<cell.delays.length; i++) {
+    					cell.delays[i].steps--;
+    					if (cell.delays[i].steps <= 0) {
+    						// perform action and remove delay
+    						cell.delays[i].action(cell);
+    						cell.delays.splice(i, 1);
+    						i--;
+    					}
+    				}
+    			}
+    		}
+        const endProcessMillis = Date.now();
+        this.addProcessTiming(processName, endProcessMillis - startProcessMillis);
+      }
   	};
 
     CAWorld.prototype.stepThroughAllProcesses = function() {
-      ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'].forEach(name => {
+
+      this.processes.forEach( name => {
         this.stepThroughProcess(name);
       });
     }
@@ -343,12 +361,17 @@
     		height: Math.floor(height),
     	});
 
+      world.processes = ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'];
+
       world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
       // tracking loss/gain of substance (rather than moved between cells)
       world.waterSpotLost = new WaterSpot();
       world.waterEvaporationFromPaper   = new WaterSpot();
       world.waterEvaporationFromSurface = new WaterSpot();
       world.waterDropletsAddedToSurface = new WaterSpot(); // to be subtracted from the final totals
+
+      // processname -> [timings]
+      world.processTimings = {};
 
       const ARBITRARY_MAX = 1000;
       world.defaultConfig = {
@@ -803,7 +826,6 @@
             let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
             let totals = calcDyeAndWaterTotalsInWorld(world);
             totalsList.push(totals);
-            console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)}`);
             if (totalsList.length > 1) {
               const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
               if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
@@ -815,6 +837,17 @@
               if (relative) {
                 startBatchRunTimeMillis = nowMillis;
               }
+            }
+            {
+              console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)}`);
+              const processTimings = world.processes.map(name => {
+                const timingsList = world.processTimings[name];
+                const lastFew = timingsList.slice(- batchSize);
+                const avg = lastFew.reduce( (prev, curr) => prev + curr ) / lastFew.length;
+                return `${name}: ${avg.toFixed(0)}`;
+              });
+
+              console.log(`stepThroughAllProcesses: ${processTimings.join(', ')}`);
             }
           }
 
