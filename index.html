@@ -873,9 +873,13 @@
                 startBatchRunTimeMillis = nowMillis;
               }
             }
+            console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)} (on surface: ${totals.waterAmountOnSurface.toFixed(1)})`);
+
             {
-              console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)}`);
-              const processTimings = world.Processes.map(name => {
+              const names = world.Processes.slice(0);
+              names.push('gridToImageData');
+              
+              const processTimings = names.map(name => {
                 const timingsList = world.processTimings[name];
                 const lastFew = timingsList.slice(- batchSize);
                 const avg = lastFew.reduce( (prev, curr) => prev + curr ) / lastFew.length;
@@ -889,9 +893,15 @@
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.stepWithCount();
-            let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, 'cellSpot');
-            DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
-            context.putImageData(imageData, 0, 0);
+
+            {
+              const startDisplayMillis = Date.now();
+              let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, 'cellSpot');
+              DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
+              context.putImageData(imageData, 0, 0);
+              const endDisplayMillis = Date.now();
+              world.addProcessTiming('gridToImageData', endDisplayMillis - startDisplayMillis);
+            }
 
             if ((numIterations % batchSize == 0) || numIterations==1 ) {
               calcAndDisplayTotals();
