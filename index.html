@@ -611,6 +611,9 @@
           ].forEach(params => {
             const        spotType = params[0];
             const diffusionFactor = params[1];
+
+            if (diffusionFactor <= 0) { continue; }
+
             const   thisValueSpot = this.value[spotType];
             const    thisNextSpot = this.next[spotType];
 
