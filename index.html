@@ -353,12 +353,12 @@
       const ARBITRARY_MAX = 1000;
       world.defaultConfig = {
         EvaporationFromPaperRate : {
-                value : 0.01,
+                value : 0.001,
                 range : [0, ARBITRARY_MAX],
           description : 'max amount of absorbed water which will evaporate from the paper',
         },
         EvaporationFromSurfaceRate : {
-                value : 0.005,
+                value : 0.0005,
                 range : [0, ARBITRARY_MAX],
           description : 'max amount of surface water which will evaoprate from the paper',
         },
@@ -376,7 +376,22 @@
                 value : 0.5,
                 range : [0, 1],
           description : 'modify the water absorption rate across the whole paper'
-        }
+        },
+        PaperCapillaryFactor : {
+                value : 1,
+                range : [0, 1],
+          description : 'modify the capillary flow rate across the whole paper'
+        },
+        PaperDiffusionFactor : {
+                value : 0.5,
+                range : [0, 1],
+          description : 'modify the diffusion flow rate across the whole paper'
+        },
+        WaterDiffusionFactor : {
+                value : 1,
+                range : [0, 1],
+          description : 'modify the diffusion flow rate across the whole paper surface'
+        },
       };
 
       // loop over keys of defaultConfig, looking for overides in config
@@ -560,7 +575,7 @@
             let deltaWaterAmountScaled = deltaWaterAmount / (2 * 8);
             // +ve means from here, -ve from nhbr
             if (remainingPaperWaterCapacity > 0 && deltaWaterAmountScaled < 0) {
-              let waterFlowAmount = Math.min(( - deltaWaterAmountScaled), remainingPaperWaterCapacity);
+              let waterFlowAmount = Math.min(( - deltaWaterAmountScaled), remainingPaperWaterCapacity) * world.PaperCapillaryFactor;
               thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterFlowAmount;
               let waterFlowProportion = waterFlowAmount / nhbrValuePaperSpot.waterAmount;
               for (var d = 0; d < DYES.length; d++) {
@@ -570,7 +585,7 @@
             } else if(deltaWaterAmountScaled > 0) {
               let nhbrRemainingPaperWaterCapacity = nhbrValuePaperSpot.MaxWaterCapacity - nhbrValuePaperSpot.waterAmount;
               if (nhbrRemainingPaperWaterCapacity > 0) {
-                let waterFlowAmount = Math.min(deltaWaterAmountScaled, nhbrRemainingPaperWaterCapacity);
+                let waterFlowAmount = Math.min(deltaWaterAmountScaled, nhbrRemainingPaperWaterCapacity) * world.PaperCapillaryFactor;
                 thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - waterFlowAmount;
                 let waterFlowProportion = waterFlowAmount / thisValuePaperSpot.waterAmount;
                 for (var d = 0; d < DYES.length; d++) {
@@ -587,32 +602,39 @@
     		diffusion: function (neighbors) {
           // - ink will diffuse, in wet paper
           //    - assume is related to relative concentrations, flowing from high to low (where both sides are wet)
-          const thisNextWaterSpot  = this.next.waterSpot;
-          const thisNextPaperSpot  = this.next.paperSpot;
-          const thisValueWaterSpot = this.value.waterSpot;
-          const thisValuePaperSpot = this.value.paperSpot;
 
-          if (thisValuePaperSpot.waterAmount > 0) {
-            for (direction of world.directions) {
-              let nhbr = neighbors[direction.index];
-              if (!nhbr) { continue; }
-              let nhbrValuePaperSpot = nhbr.value.paperSpot;
-              if (nhbrValuePaperSpot.waterAmount <= 0) { continue; }
+          // within wet paper, and on wet surface
+          [
+            // [spotType, diffusionFactor]
+            ['paperSpot', world.PaperDiffusionFactor]
+          ].forEach(params => {
+            const        spotType = params[0];
+            const diffusionFactor = params[1];
+            const   thisValueSpot = this.value[spotType];
+            const    thisNextSpot = this.next[spotType];
 
-              for (var d = 0; d < DYES.length; d++) {
-                let thisValueConcentration = thisValuePaperSpot.dyeAmounts[d] / thisValuePaperSpot.waterAmount;
-                let nhbrValueConcentration = nhbrValuePaperSpot.dyeAmounts[d] / nhbrValuePaperSpot.waterAmount;
-                let deltaConcentration = nhbrValueConcentration - thisValueConcentration;
-                if (deltaConcentration > 0) { // dye comes to here
-                  let dyeFlowAmount = DYES[d].Rd * ((deltaConcentration / nhbrValueConcentration) / 2) * nhbrValuePaperSpot.dyeAmounts[d] / 8;
-                  thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + dyeFlowAmount;
-                } else if (deltaConcentration < 0) { // dye goes from here
-                  let dyeFlowAmount = DYES[d].Rd * ((deltaConcentration / thisValueConcentration) / 2) * thisValuePaperSpot.dyeAmounts[d] / 8;
-                  thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + dyeFlowAmount;
+            if (thisValueSpot.waterAmount > 0) {
+              for (direction of world.directions) {
+                let nhbr = neighbors[direction.index];
+                if (!nhbr) { continue; }
+                let nhbrValueSpot = nhbr.value[spotType];
+                if (nhbrValueSpot.waterAmount <= 0) { continue; }
+
+                for (var d = 0; d < DYES.length; d++) {
+                  let thisValueConcentration = thisValueSpot.dyeAmounts[d] / thisValueSpot.waterAmount;
+                  let nhbrValueConcentration = nhbrValueSpot.dyeAmounts[d] / nhbrValueSpot.waterAmount;
+                  let deltaConcentration = nhbrValueConcentration - thisValueConcentration;
+                  if (deltaConcentration > 0) { // dye comes to here
+                    let dyeFlowAmount = diffusionFactor * DYES[d].Rd * (deltaConcentration / nhbrValueConcentration) * nhbrValueSpot.dyeAmounts[d] / 8;
+                    thisNextSpot.dyeAmounts[d] = thisNextSpot.dyeAmounts[d] + dyeFlowAmount;
+                  } else if (deltaConcentration < 0) { // dye goes from here
+                    let dyeFlowAmount = diffusionFactor * DYES[d].Rd * (deltaConcentration / thisValueConcentration) * thisValueSpot.dyeAmounts[d] / 8;
+                    thisNextSpot.dyeAmounts[d] = thisNextSpot.dyeAmounts[d] + dyeFlowAmount;
+                  }
                 }
               }
             }
-          }
+          })
 
           return true;
         },
