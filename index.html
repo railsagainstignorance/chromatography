@@ -337,7 +337,7 @@
 
     //------------
 
-    function createWorldOfBlottingPaperAndDyes(width, height, config) {
+    function createWorldOfBlottingPaperAndDyes(width, height, config={ EvaporationFromSurfaceRate: -1}) {
     	world = new CAWorld({
     		width: Math.floor(width),
     		height: Math.floor(height),
@@ -350,31 +350,53 @@
       world.waterEvaporationFromSurface = new WaterSpot();
       world.waterDropletsAddedToSurface = new WaterSpot(); // to be subtracted from the final totals
 
+      const ARBITRARY_MAX = 1000;
       world.defaultConfig = {
         EvaporationFromPaperRate : {
                 value : 0.01,
-                range : [0, 1000],
+                range : [0, ARBITRARY_MAX],
           description : 'max amount of absorbed water which will evaporate from the paper',
         },
         EvaporationFromSurfaceRate : {
                 value : 0.005,
-                range : [0, 1000],
+                range : [0, ARBITRARY_MAX],
           description : 'max amount of surface water which will evaoprate from the paper',
-        }
-      }
+        },
+        SpreadMinAmountToGoToDry : {
+                value : 0.01,
+                range : [0, ARBITRARY_MAX],
+          description : "cell needs thin min amount of surface water before spreading to a dry cell"
+        },
+        SpreadSlopeFactor : {
+                value : 0.1,
+                range : [0, ARBITRARY_MAX],
+          description : "if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor"
+        },
+      };
 
-      for (let [key, details] of world.defaultConfig) {
+      // loop over keys of defaultConfig, looking for overides in config
+      Object.keys(world.defaultConfig).forEach( key => {
+        const details = world.defaultConfig[key];
         if (details.hasOwnProperty('value')) {
           world[key] = details.value;
+
+          if (config != undefined) {
+            const newValue = config[key];
+            if (newValue != undefined ) {
+              if (details.range) {
+                if (details.range[0] <= newValue && newValue <= details.range[1]) {
+                  world[key] = newValue;
+                  details.override = newValue;
+                } else {
+                  console.log(`WARNING: world: config: override value specified for ${key}, ${newValue}, falls outside of permitted range, ${details.range}`)
+                }
+              }
+            }
+          }
         }
-      }
+      });
 
-      // world.EvaporationFromPaperRate   = 0.01;
-      // world.EvaporationFromSurfaceRate = 0.005;
-
-      world.SpreadMinAmountToGoToDry = 0.01; // cell needs a min amount of surface water before spreading to a dry cell
-      world.SpreadSlopeFactor = 0.1;          // if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor
-
+      console.log(`world: config=${JSON.stringify(world.defaultConfig)}`);
 
     	world.registerCellType('paper', {
         getCellValue: function () {
