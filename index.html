@@ -330,7 +330,7 @@
   	};
 
     CAWorld.prototype.stepThroughAllProcesses = function() {
-      ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation'].forEach(name => {
+      ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'].forEach(name => {
         this.stepThroughProcess(name);
       });
     }
@@ -365,7 +365,7 @@
         SpreadMinAmountToGoToDry : {
                 value : 0.01,
                 range : [0, ARBITRARY_MAX],
-          description : "cell needs thin min amount of surface water before spreading to a dry cell"
+          description : "cell needs this min amount of surface water before spreading to a dry cell"
         },
         SpreadSlopeFactor : {
                 value : 0.1,
@@ -406,6 +406,9 @@
           return this.next;
     		},
         sanityCheckValue: function() {
+          const thisValueWaterSpot = this.value.waterSpot;
+          const thisValuePaperSpot = this.value.paperSpot;
+
           function thisError(msg){
             throw new Error(`ERROR: (${this.x}, ${this.y}): ${msg}`);
           }
