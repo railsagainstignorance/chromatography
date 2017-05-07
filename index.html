@@ -934,8 +934,14 @@
 
           // loop over each KV pair and update configs if the key is known
           keyValuePairs.forEach(kvp => {
-            if (defaultconfigs.hasOwnProperty(kvp[0])) {
-              configs[ kvp[0] ] = kvp[1];
+            const key = kvp[0];
+            if (defaultconfigs.hasOwnProperty(key)) {
+              let value = kvp[1];
+              let defaultValuetype = typeof defaultconfigs[key];
+              if (defaultValuetype === 'boolean') {
+                value = (value == 'true');
+              }
+              configs[ key ] = value;
             }
           });
         }
@@ -950,7 +956,35 @@
       return {
                  size : 100,
         maxIterations : 2000,
+               record : false,
       };
+    }
+
+    function startRecording( canvas, codeVersion ){
+      /* set up the recording of the canvas animations */
+      const mimeType = 'video/webm'; // couldn't find a different format which worked, e.g. mp4.
+      const options = {mimeType: mimeType};
+      const recordedFile = `chromatography-experiment.${codeVersion}.webm`;
+      function download(event) { // receives the recorded data, and writes to file using a url hack. Ick.
+        const videoData = [ event.data ];
+        const blob = new Blob(videoData, {
+          type: mimeType
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.href = url;
+        a.download = recordedFile;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+      const frameRate = 15;
+      const stream = canvas.captureStream(frameRate);
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.ondataavailable = download;
+      mediaRecorder.start();
+      window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
     }
 
     function createPaper(canvas, queryString){
@@ -960,6 +994,10 @@
       if (configs['size'] && configs['size'] > 1) {
         canvas.setAttribute('height', configs['size']);
         canvas.setAttribute( 'width', configs['size']);
+      }
+
+      if (configs.record) {
+        startRecording( canvas, '2-0');
       }
 
       function createPaperAddDropsAndRun() {
@@ -1046,43 +1084,9 @@
 
   <script>
   (function(){
-    const codeVersion = '2-0'; // affects filename of recording
-
     const canvas = document.getElementById('myCanvas');
-
-    const doRecording = false;
-
-    if ( doRecording ){
-      /* set up the recording of the canvas animations */
-      const mimeType = 'video/webm'; // couldn't find a different format which worked, e.g. mp4.
-      const options = {mimeType: mimeType};
-      const recordedFile = `chromatography-experiment.${codeVersion}.webm`;
-      function download(event) { // receives the recorded data, and writes to file using a url hack. Ick.
-        const videoData = [ event.data ];
-        const blob = new Blob(videoData, {
-          type: mimeType
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        document.body.appendChild(a);
-        a.style = 'display: none';
-        a.href = url;
-        a.download = recordedFile;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      }
-      const frameRate = 15;
-      const stream = canvas.captureStream(frameRate);
-      const mediaRecorder = new MediaRecorder(stream, options);
-      mediaRecorder.ondataavailable = download;
-      mediaRecorder.start();
-      // window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
-    }
-
-    {
-      var paper = Chroma.createPaper(canvas, location.search);
-      window.setTimeout(paper.run, 100);
-    }
+    var paper = Chroma.createPaper(canvas, location.search);
+    window.setTimeout(paper.run, 100);
   })();
   </script>
 </body>
