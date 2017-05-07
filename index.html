@@ -831,28 +831,28 @@
       }
     }
 
-    function calcAndDisplayTotals(startBatchRunTimeMillis, totalsList, batchSize, minAcceptableDelta, numIterations, relative=true){
-      let fromTimeMillis = (relative)? startBatchRunTimeMillis : startBatchRunTimeMillis;
-      let fromIndex      = (relative && totalsList.length > 2)? totalsList.length - 2   : 0;
+    function calcAndDisplayTotals(iterationDetails, relative=true){
+      let fromTimeMillis = (relative)? iterationDetails.startBatchRunTimeMillis : iterationDetails.startBatchRunTimeMillis;
+      let fromIndex      = (relative && iterationDetails.totalsList.length > 2)? iterationDetails.totalsList.length - 2   : 0;
 
       let nowMillis = Date.now();
-      let frameRate = batchSize / ((nowMillis - fromTimeMillis) / 1000);
-      let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
+      let frameRate = iterationDetails.batchSize / ((nowMillis - fromTimeMillis) / 1000);
+      let pixelRate = iterationDetails.batchSize * world.width * world.height / ((nowMillis - iterationDetails.startBatchRunTimeMillis) / 1000);
       let totals = calcDyeAndWaterTotalsInWorld(world);
-      totalsList.push(totals);
-      if (totalsList.length > 1) {
-        const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
-        if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
+      iterationDetails.totalsList.push(totals);
+      if (iterationDetails.totalsList.length > 1) {
+        const totalsDelta = calcDyeAndWaterTotalDelta(iterationDetails.totalsList, relative);
+        if (Math.abs(totalsDelta.waterAmountTotal) > iterationDetails.minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > iterationDetails.minAcceptableDelta) {
           console.log(`WARNING: delta error > ${minAcceptableDelta}
-            prev: ${JSON.stringify(totalsList[fromIndex])}
-            last: ${JSON.stringify(totalsList[totalsList.length - 1])}`);
+            prev: ${JSON.stringify(iterationDetails.totalsList[fromIndex])}
+            last: ${JSON.stringify(iterationDetails.totalsList[totalsList.length - 1])}`);
             console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
         }
         if (relative) {
-          startBatchRunTimeMillis = nowMillis;
+          iterationDetails.startBatchRunTimeMillis = nowMillis;
         }
       }
-      console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)} (on surface: ${totals.waterAmountOnSurface.toFixed(1)})`);
+      console.log(`iteration=${iterationDetails.numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)} (on surface: ${totals.waterAmountOnSurface.toFixed(1)})`);
 
       {
         const names = world.Processes.slice(0);
@@ -860,15 +860,13 @@
 
         const processTimings = names.map(name => {
           const timingsList = world.processTimings[name];
-          const lastFew = timingsList.slice(- batchSize);
+          const lastFew = timingsList.slice(- iterationDetails.batchSize);
           const avg = lastFew.reduce( (prev, curr) => prev + curr ) / lastFew.length;
           return `${name}: ${avg.toFixed(0)}`;
         });
 
         console.log(`process timings: ${processTimings.join(', ')}`);
       }
-
-      return startBatchRunTimeMillis;
     }
 
     function createPaper(canvas, maxIterations=100, urlParams){
@@ -883,16 +881,24 @@
             SpreadSlopeFactor: 0.01,
           });
 
-          let numIterations=1;
-          let batchSize = 10;
-          const startOverallRunTimeMillis = Date.now();
-          let   startBatchRunTimeMillis   = Date.now();
-          const minAcceptableDelta = 0.1;
+          const iterationDetails = {
+                        numIterations : 1,
+                            batchSize : 10,
+            startOverallRunTimeMillis : Date.now(),
+              startBatchRunTimeMillis : Date.now(),
+                   minAcceptableDelta : 0.1,
+                           totalsList : [calcDyeAndWaterTotalsInWorld(world)],
+          };
+          // let numIterations=1;
+          // let batchSize = 10;
+          // const startOverallRunTimeMillis = Date.now();
+          // let   startBatchRunTimeMillis   = Date.now();
+          // const minAcceptableDelta = 0.1;
+          //
+          // const totalsList = [totals];
+          // let totals = calcDyeAndWaterTotalsInWorld(world);
 
-          let totals = calcDyeAndWaterTotalsInWorld(world);
           console.log(`iteration=0,`);
-          // console.log(`     totals=${JSON.stringify(totals)}`);
-          const totalsList = [totals];
 
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
@@ -909,17 +915,17 @@
 
             const relative = true;
 
-            if ((numIterations % batchSize == 0) || numIterations==1 ) {
-              startBatchRunTimeMillis = calcAndDisplayTotals(startBatchRunTimeMillis, totalsList, batchSize, minAcceptableDelta, numIterations, relative);
+            if ((iterationDetails.numIterations % iterationDetails.batchSize == 0) || iterationDetails.numIterations==1 ) {
+              calcAndDisplayTotals(iterationDetails, relative);
             }
 
-            numIterations = numIterations + 1;
-            const lastTotals = totalsList[totalsList.length -1];
+            iterationDetails.numIterations = iterationDetails.numIterations + 1;
+            const lastTotals = iterationDetails.totalsList[iterationDetails.totalsList.length -1];
             const waterRemaining = lastTotals.waterAmountInPaper + lastTotals.waterAmountOnSurface;
-            if (   (numIterations >= maxIterations)
-                || ((numIterations > batchSize) && (waterRemaining <= 0))
+            if (   (iterationDetails.numIterations >= iterationDetails.maxIterations)
+                || ((iterationDetails.numIterations > iterationDetails.batchSize) && (waterRemaining <= 0))
               ) {
-                startBatchRunTimeMillis = calcAndDisplayTotals(startBatchRunTimeMillis, totalsList, batchSize, minAcceptableDelta, numIterations, !relative);
+                calcAndDisplayTotals(iterationDetails, !relative);
                 console.log(`iterations ended.`);
                 window.dispatchEvent( new Event('StopRecording') );
             } else {
