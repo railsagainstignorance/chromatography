@@ -357,39 +357,94 @@
       });
     }
 
-    CAWorld.prototype.importConfig = function(config) {
-      // loop over keys of defaultConfig, looking for overrides in config
-      Object.keys(this.defaultConfig).forEach( key => {
-        const details = this.defaultConfig[key];
-        if (details.hasOwnProperty('value')) {
-          world[key] = details.value;
+    CAWorld.ARBITRARY_MAX = 1000;
+    CAWorld.DefaultConfig = {
+      EvaporationFromPaperRate : {
+              value : 0.001,
+              range : [0, CAWorld.ARBITRARY_MAX],
+        description : 'max amount of absorbed water which will evaporate from the paper',
+      },
+      EvaporationFromSurfaceRate : {
+              value : 0.0005,
+              range : [0, CAWorld.ARBITRARY_MAX],
+        description : 'max amount of surface water which will evaoprate from the paper',
+      },
+      SpreadMinAmountToGoToDry : {
+              value : 0.01,
+              range : [0, CAWorld.ARBITRARY_MAX],
+        description : "cell needs this min amount of surface water before spreading to a dry cell"
+      },
+      SpreadSlopeFactor : {
+              value : 0.1,
+              range : [0, CAWorld.ARBITRARY_MAX],
+        description : "if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor"
+      },
+      PaperAbsorptionFactor : {
+              value : 0.5,
+              range : [0, 1],
+        description : 'modify the water absorption rate across the whole paper'
+      },
+      PaperCapillaryFactor : {
+              value : 1,
+              range : [0, 1],
+        description : 'modify the capillary flow rate across the whole paper'
+      },
+      PaperDiffusionFactor : {
+              value : 0.5,
+              range : [0, 1],
+        description : 'modify the diffusion flow rate across the whole paper'
+      },
+      WaterDiffusionFactor : {
+              value : 0.5,
+              range : [0, 1],
+        description : 'modify the diffusion flow rate across the whole paper surface'
+      },
+      WaterDiffusionFactor : {
+              value : 0.5,
+              range : [0, 1],
+        description : 'modify the diffusion flow rate across the whole paper surface'
+      },
+      Processes : {
+              value : ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+              known : ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+        description : 'the sequence of physical processes to run in turn on the grid',
+      },
+    };
 
-          function override(key, val) {
-            world[key] = val;
-            details.override = val;
-          }
+    CAWorld.prototype.importConfig = function(config) {
+      // create and load up this.config with the default values, and then override them as and when
+      this.config = {};
+
+      // loop over keys of DefaultConfig, looking for overrides in config,
+      for( let key of Object.keys(CAWorld.DefaultConfig) ) {
+        const details = CAWorld.DefaultConfig[key];
+        if (details.hasOwnProperty('value')) {
+          let value = details.value;
 
           if (config != undefined) {
             const newValue = config[key];
             if (newValue != undefined ) {
               if (details.range) {
                 if (details.range[0] <= newValue && newValue <= details.range[1]) {
-                  override(key, newValue);
+                  value = newValue;
                 } else {
                   console.log(`WARNING: world: config: override value specified for ${key}, ${newValue}, falls outside of permitted range, ${details.range}`)
                 }
               } else if (details.known) {
                 const knownInNewValue = newValue.filter(v => { return details.known.includes(v) });
                 if (knownInNewValue.length > 0) {
-                  override(key, newValue);
+                  value = newValue;
                 }
               }
             }
           }
-        }
-      });
 
-      console.log(`world: config=${JSON.stringify(this.defaultConfig, null, " ")}`);
+          this.config[key] = value; // add to world config map, for documentation
+          world[key]       = value; // push into world instance directly
+        }
+      }
+
+      console.log(`world configs=${JSON.stringify(this.config, null, " ")}`);
     }
 
     //------------
@@ -409,60 +464,6 @@
 
       // processname -> [timings]
       world.processTimings = {};
-
-      const ARBITRARY_MAX = 1000;
-      world.defaultConfig = {
-        EvaporationFromPaperRate : {
-                value : 0.001,
-                range : [0, ARBITRARY_MAX],
-          description : 'max amount of absorbed water which will evaporate from the paper',
-        },
-        EvaporationFromSurfaceRate : {
-                value : 0.0005,
-                range : [0, ARBITRARY_MAX],
-          description : 'max amount of surface water which will evaoprate from the paper',
-        },
-        SpreadMinAmountToGoToDry : {
-                value : 0.01,
-                range : [0, ARBITRARY_MAX],
-          description : "cell needs this min amount of surface water before spreading to a dry cell"
-        },
-        SpreadSlopeFactor : {
-                value : 0.1,
-                range : [0, ARBITRARY_MAX],
-          description : "if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor"
-        },
-        PaperAbsorptionFactor : {
-                value : 0.5,
-                range : [0, 1],
-          description : 'modify the water absorption rate across the whole paper'
-        },
-        PaperCapillaryFactor : {
-                value : 1,
-                range : [0, 1],
-          description : 'modify the capillary flow rate across the whole paper'
-        },
-        PaperDiffusionFactor : {
-                value : 0.5,
-                range : [0, 1],
-          description : 'modify the diffusion flow rate across the whole paper'
-        },
-        WaterDiffusionFactor : {
-                value : 0.5,
-                range : [0, 1],
-          description : 'modify the diffusion flow rate across the whole paper surface'
-        },
-        WaterDiffusionFactor : {
-                value : 0.5,
-                range : [0, 1],
-          description : 'modify the diffusion flow rate across the whole paper surface'
-        },
-        Processes : {
-                value : ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
-                known : ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
-          description : 'the sequence of physical processes to run in turn on the grid',
-        },
-      };
 
       world.importConfig( config );
 
@@ -992,17 +993,14 @@
     }
 
     function createPaper(canvas, queryString){
-
       const configs = parseUrlParams(queryString);
-      console.log(`configs: ${JSON.stringify(configs, null, ' ')}`);
+      console.log(`all configs: ${JSON.stringify(configs, null, ' ')}`);
       if (configs['size'] && configs['size'] > 1) {
         canvas.setAttribute('height', configs['size']);
         canvas.setAttribute( 'width', configs['size']);
       }
 
-      if (configs.record) {
-        startRecording( canvas, '2-0');
-      }
+      if (configs.record) { startRecording( canvas, '3-0'); }
 
       function createPaperAddDropsAndRun() {
         const context = canvas.getContext('2d');
