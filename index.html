@@ -932,7 +932,7 @@
       const CombinedDefaultConfig = Object.assign({}, DefaultConfig, CAWorld.DefaultConfig);
       // loop over each CombinedDefaultConfig config and update configs if the candidate config key+value pass muster
       for (let key of Object.keys(CombinedDefaultConfig)) {
-        let value = CombinedDefaultConfig[key];
+        let value = CombinedDefaultConfig[key].value;
         if (candidateKeyValueMap.hasOwnProperty(key)) {
           const candidateValue = candidateKeyValueMap[key];
           const details = CombinedDefaultConfig[key];
@@ -965,14 +965,33 @@
                 } else {
                   value = parsed;
                 }
+              } else if (details.type == 'range') {
+                if (parsed.length != 2) {
+                  console.log(`parseUrlParams: should be a range consisting of two values: ${key}=${candidateValue}`);
+                } else {
+                  const anyNaNs = parsed.filter( n => {return isNaN(n);} );
+                  if (anyNaNs.length > 0) {
+                    console.log(`parseUrlParams: could not parse as two floats: ${key}=${candidateValue}`);
+                  } else if (parsed[0] > parsed[1]) {
+                    console.log(`parseUrlParams: floats should be in ascending order: ${key}=${candidateValue}`);
+                  } else if (details.range){
+                    const anyOutOfRange = parsed.filter( n => {
+                      return (n < details.range[0] || n > details.range[1]);
+                    } );
+                    if (anyOutOfRange.length > 0) {
+                      console.log(`parseUrlParams: floats should be in range, ${details.range}: ${key}=${candidateValue}`);
+                    } else {
+                      value = parsed;
+                    }
+                  }
+                }
               } else {
                 value = parsed;
               }
             }
           }
-
-          configs[ key ] = value;
         }
+        configs[ key ] = value;
       }
 
       const unrecognisedKeys = Object.keys(candidateKeyValueMap).filter( k => { return ! CombinedDefaultConfig.hasOwnProperty(k); });
@@ -1000,6 +1019,35 @@
       record: {
               value : false,
         description : 'to record the canvas animation as a webm file',
+      },
+      dropsNum: {
+              value : 10,
+              range : [0, ARBITRARY_MAX],
+        description : 'how many initial drops',
+      },
+      dropsXRange: {
+              value : [0, 1],
+              range : [0, 2],
+               type : 'range',
+        description : 'min/max of x as a proportion of world.width',
+      },
+      dropsYRange: {
+              value : [0, 1],
+              range : [0, 2],
+               type : 'range',
+        description : 'min/max of y as a proportion of world.width',
+      },
+      dropsRRange: {
+              value : [0, 1/3],
+              range : [0, 2],
+               type : 'range',
+        description : 'min/max of r as a proportion of the world.width (with an unbreakable minimum of 2 cells)',
+      },
+      dropsVRange: {
+              value : [10000, 10000],
+              range : [0, 10*ARBITRARY_MAX],
+               type : 'range',
+        description : 'min/max of volume as a proportion of world.width',
       },
     };
 
@@ -1091,11 +1139,11 @@
         }
 
         addDrops({
-             num : 1,
-          xRange : [0, world.width],
-          yRange : [0, world.height],
-          rRange : [2, world.width/3],
-          vRange : [10000, 10000]
+             num : configs.dropsNum,
+          xRange : configs.dropsXRange.map(n => {return n * world.width ;}),
+          yRange : configs.dropsYRange.map(n => {return n * world.height;}),
+          rRange : configs.dropsRRange.map(n => {return n * world.width ;}),
+          vRange : configs.dropsVRange
         });
 
         iterateAndDisplayWorld();
