@@ -911,7 +911,9 @@
 
       for (let paramString of qsParamStrings) {
         const match = paramString.match(/^([^=]+)=(.*)/);
-        if (match) {
+        if (!match) {
+          console.log(`parseUrlParams: could not parse ${paramString}`);
+        } else {
           const name = match[1];
           const value = decodeURIComponent(match[2]);
 
@@ -939,19 +941,27 @@
             value = (candidateValue == 'true');
           } else if (defaultValuetype === 'number') {
             const parsed = parseFloat(candidateValue);
-            if (!isNaN(parsed) ) {
+            if (isNaN(parsed) ) {
+              console.log(`parseUrlParams: could not parse as a float: ${key}=${candidateValue}`);
+            } else {
               if (details.range) {
-                if (parsed >= details.range[0] && parsed <= details.range[1]) {
+                if (parsed < details.range[0] || parsed > details.range[1]) {
+                  console.log(`parseUrlParams: out of range, ${details.range}: ${key}=${candidateValue}`);
+                } else {
                   value = parsed;
                 }
               }
             }
           } else if (Array.isArray(details.value)) {
             const parsed = JSON.parse(candidateValue);
-            if (Array.isArray(parsed)) {
+            if (!Array.isArray(parsed)) {
+              console.log(`parseUrlParams: not an array: ${key}=${candidateValue}`);
+            } else {
               if (details.known) {
                 const knownInNewValue = parsed.filter(v => { return details.known.includes(v) });
-                if (knownInNewValue.length > 0) {
+                if (knownInNewValue.length != parsed.length) {
+                  console.log(`parseUrlParams: contains unrecognised values, ${details.known}: ${key}=${candidateValue}`);
+                } else {
                   value = parsed;
                 }
               } else {
@@ -964,39 +974,33 @@
         }
       }
 
+      const unrecognisedKeys = Object.keys(candidateKeyValueMap).filter( k => { return ! DefaultConfigs.hasOwnProperty(k); });
+      if (unrecognisedKeys.length > 0) {
+        console.log(`parseUrlParams: contains unrecognised keys: ${unrecognisedKeys}`);
+      }
+
       configs['history'] = history;
 
       return configs;
     }
 
-    function createDefaultConfigs(){
-      return {
-                 size : 100,
-        maxIterations : 2000,
-               record : false,
-      };
-    }
-
     const ARBITRARY_MAX = 1000;
-    const DefaultConfigs = [
-      {
-               name : 'size',
+    const DefaultConfigs = {
+      size: {
               value : 100,
               range : [1, ARBITRARY_MAX],
         description : 'dimensions of square canvas & grid',
       },
-      {
-        name : 'maxIterations',
+      maxIterations: {
               value : 2000,
               range : [0, 10*ARBITRARY_MAX],
         description : 'upper limit for iteration, assuming there is still water in or on the paper',
       },
-      {
-               name : 'record',
+      record: {
               value : false,
         description : 'to record the canvas animation as a webm file',
       },
-    ];
+    };
 
     function startRecording( canvas, codeVersion ){
       /* set up the recording of the canvas animations */
