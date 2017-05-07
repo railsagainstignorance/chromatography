@@ -1049,9 +1049,10 @@
     const codeVersion = '2-0'; // affects filename of recording
 
     const canvas = document.getElementById('myCanvas');
-    const context = canvas.getContext('2d');
 
-    {
+    const doRecording = false;
+
+    if ( doRecording ){
       /* set up the recording of the canvas animations */
       const mimeType = 'video/webm'; // couldn't find a different format which worked, e.g. mp4.
       const options = {mimeType: mimeType};
