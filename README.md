@@ -18,6 +18,7 @@ Major refactoring done, so each physical process is handled by its own discrete 
 * create irregular droplets
 * randomise the characteristics of the cells, e.g. water capacity, flow params, etc.
 * stop when no water remaining in or on paper. DONE.
+* fix surfaceFlow - is not working properly
 
 ## The plan - part 2
 

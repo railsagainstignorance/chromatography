@@ -838,7 +838,9 @@
           console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
           const imageData = context.getImageData(0,0,canvas.width,canvas.height);
           const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, {
-            // Processes : ['surfaceFlow', 'sanityCheckValue']
+            Processes : ['surfaceFlow', 'sanityCheckValue'],
+            SpreadMinAmountToGoToDry: 1,
+            SpreadSlopeFactor: 0.01,
           });
 
           let numIterations=1;
@@ -878,7 +880,7 @@
             {
               const names = world.Processes.slice(0);
               names.push('gridToImageData');
-              
+
               const processTimings = names.map(name => {
                 const timingsList = world.processTimings[name];
                 const lastFew = timingsList.slice(- batchSize);
@@ -930,14 +932,14 @@
             WaterSpot.createBigRandomDrop()
           );
 
-          const numDropsAcross = 20;
+          const numDropsAcross = 1;
           const dropSpacing = world.width / (numDropsAcross+1);
           for (var i = 0; i < numDropsAcross; i++) {
             let x = world.width * Math.random();
             let y = world.height * Math.random();
             let r = 2+(Math.random()*world.width)/3;
             let h = 0.1 + Math.random()*4;
-            let v = 1000;
+            let v = 10000;
             world.addBigDrop(x, y, r, WaterSpot.createBigRandomDrop(v));
           }
 
