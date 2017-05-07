@@ -358,7 +358,7 @@
     }
 
     CAWorld.prototype.importConfig = function(config) {
-      // loop over keys of defaultConfig, looking for overides in config
+      // loop over keys of defaultConfig, looking for overrides in config
       Object.keys(this.defaultConfig).forEach( key => {
         const details = this.defaultConfig[key];
         if (details.hasOwnProperty('value')) {
@@ -899,39 +899,71 @@
       const qsMinusQM = queryString.replace(/^\?/, '');
       const qsParamStrings = qsMinusQM.split(/&/);
 
-      const params = {
-        history : {
-          queryString : queryString,
-                 json : []
-        }
-      };
+      const defaultconfigs = createDefaultConfigs();
+      const configs = {};
+      const history = {
+        queryString : queryString,
+          jsonList : [],
+          defaults : JSON.stringify(defaultconfigs)
+        };
 
+      // pre-populate the configs with the defaults
+      Object.keys(defaultconfigs).forEach(k => {
+        configs[k] = defaultconfigs[k];
+      });
+
+      // look for overrides to known configs, ignoring unknown configs
       for (let paramString of qsParamStrings) {
         const match = paramString.match(/^([^=]+)=(.*)/);
         if (match) {
           const name = match[1];
           const value = decodeURIComponent(match[2]);
 
+          // build up a list of KV pairs
+          const keyValuePairs = [];
+
           if (name == 'json') {
             const jsonObj = JSON.parse(value);
-            // console.log(`DEBUG: jsonObj=${JSON.stringify(jsonObj)}`);
             Object.keys( jsonObj ).forEach(k => {
-              params[k] = jsonObj[k];
+              keyValuePairs.push( [k, jsonObj[k]] );
             });
-            params['history']['json'].push(value);
+            history.jsonList.push(value);
           } else {
-            params[name] = value;
+            keyValuePairs.push( [name, value] );
           }
+
+          // loop over each KV pair and update configs if the key is known
+          keyValuePairs.forEach(kvp => {
+            if (defaultconfigs.hasOwnProperty(kvp[0])) {
+              configs[ kvp[0] ] = kvp[1];
+            }
+          });
         }
       }
 
-      return params;
+      configs['history'] = history;
+
+      return configs;
+    }
+
+    function createDefaultConfigs(){
+      return {
+                 size : 100,
+        maxIterations : 2000,
+      };
     }
 
     function createPaper(canvas, maxIterations, queryString){
 
-      configParams = parseUrlParams(queryString);
-      console.log(`configParams: ${JSON.stringify(configParams, null, ' ')}`);
+      const configs = parseUrlParams(queryString);
+      console.log(`configs: ${JSON.stringify(configs, null, ' ')}`);
+      if (configs['size'] && configs['size'] > 1) {
+        canvas.setAttribute('height', configs['size']);
+        canvas.setAttribute( 'width', configs['size']);
+      }
+      if (configs.maxIterations > 1) {
+        maxIterations = configs.maxIterations;
+      }
 
         function createPaperAddDropsAndRun() {
           const context = canvas.getContext('2d');
