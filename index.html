@@ -965,75 +965,75 @@
         maxIterations = configs.maxIterations;
       }
 
-        function createPaperAddDropsAndRun() {
-          const context = canvas.getContext('2d');
-          console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
-          const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-          const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, {
-            Processes : ['surfaceFlow', 'sanityCheckValue'],
-            SpreadMinAmountToGoToDry: 1,
-            SpreadSlopeFactor: 0.01,
-          });
+      function createPaperAddDropsAndRun() {
+        const context = canvas.getContext('2d');
+        console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
+        const imageData = context.getImageData(0,0,canvas.width,canvas.height);
+        const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, {
+          Processes : ['surfaceFlow', 'sanityCheckValue'],
+          SpreadMinAmountToGoToDry: 1,
+          SpreadSlopeFactor: 0.01,
+        });
 
-          const iterationDetails = {
-                        numIterations : 1,
-                        maxIterations : maxIterations,
-                            batchSize : 10,
-            startOverallRunTimeMillis : Date.now(),
-              startBatchRunTimeMillis : Date.now(),
-                   minAcceptableDelta : 0.1,
-                           totalsList : [calcDyeAndWaterTotalsInWorld(world)],
-          };
+        const iterationDetails = {
+                      numIterations : 1,
+                      maxIterations : maxIterations,
+                          batchSize : 10,
+          startOverallRunTimeMillis : Date.now(),
+            startBatchRunTimeMillis : Date.now(),
+                 minAcceptableDelta : 0.1,
+                         totalsList : [calcDyeAndWaterTotalsInWorld(world)],
+        };
 
-          console.log(`iteration=0,`);
+        console.log(`iteration=0,`);
 
-          function iterateAndDisplayWorld(){
-            // console.log(`world iteration=${numIterations} of ${maxIterations}`);
-            world.stepWithCount();
+        function iterateAndDisplayWorld(){
+          // console.log(`world iteration=${numIterations} of ${maxIterations}`);
+          world.stepWithCount();
 
-            {
-              const startDisplayMillis = Date.now();
-              let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, 'cellSpot');
-              DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
-              context.putImageData(imageData, 0, 0);
-              const endDisplayMillis = Date.now();
-              world.addProcessTiming('gridToImageData', endDisplayMillis - startDisplayMillis);
-            }
-
-            const relative = true;
-
-            if ((iterationDetails.numIterations % iterationDetails.batchSize == 0) || iterationDetails.numIterations==1 ) {
-              calcAndDisplayTotals(iterationDetails, relative);
-            }
-
-            iterationDetails.numIterations = iterationDetails.numIterations + 1;
-            const lastTotals = iterationDetails.totalsList[iterationDetails.totalsList.length -1];
-            const waterRemaining = lastTotals.waterAmountInPaper + lastTotals.waterAmountOnSurface;
-            if (   (iterationDetails.numIterations >= iterationDetails.maxIterations)
-                || ((iterationDetails.numIterations > iterationDetails.batchSize) && (waterRemaining <= 0))
-              ) {
-                calcAndDisplayTotals(iterationDetails, !relative);
-                console.log(`iterations ended.`);
-                window.dispatchEvent( new Event('StopRecording') );
-            } else {
-              window.requestAnimationFrame(iterateAndDisplayWorld);
-            }
+          {
+            const startDisplayMillis = Date.now();
+            let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, 'cellSpot');
+            DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
+            context.putImageData(imageData, 0, 0);
+            const endDisplayMillis = Date.now();
+            world.addProcessTiming('gridToImageData', endDisplayMillis - startDisplayMillis);
           }
 
-          addDrops({
-               num : 1,
-            xRange : [0, world.width],
-            yRange : [0, world.height],
-            rRange : [2, world.width/3],
-            vRange : [10000, 10000]
-          });
+          const relative = true;
 
-          iterateAndDisplayWorld();
+          if ((iterationDetails.numIterations % iterationDetails.batchSize == 0) || iterationDetails.numIterations==1 ) {
+            calcAndDisplayTotals(iterationDetails, relative);
+          }
+
+          iterationDetails.numIterations = iterationDetails.numIterations + 1;
+          const lastTotals = iterationDetails.totalsList[iterationDetails.totalsList.length -1];
+          const waterRemaining = lastTotals.waterAmountInPaper + lastTotals.waterAmountOnSurface;
+          if (   (iterationDetails.numIterations >= iterationDetails.maxIterations)
+              || ((iterationDetails.numIterations > iterationDetails.batchSize) && (waterRemaining <= 0))
+            ) {
+              calcAndDisplayTotals(iterationDetails, !relative);
+              console.log(`iterations ended.`);
+              window.dispatchEvent( new Event('StopRecording') );
+          } else {
+            window.requestAnimationFrame(iterateAndDisplayWorld);
+          }
         }
 
-        return {
-          run: createPaperAddDropsAndRun
-        }
+        addDrops({
+             num : 1,
+          xRange : [0, world.width],
+          yRange : [0, world.height],
+          rRange : [2, world.width/3],
+          vRange : [10000, 10000]
+        });
+
+        iterateAndDisplayWorld();
+      }
+
+      return {
+        run: createPaperAddDropsAndRun
+      }
     }
 
     return {
