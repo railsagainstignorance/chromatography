@@ -831,10 +831,47 @@
       }
     }
 
+    function calcAndDisplayTotals(startBatchRunTimeMillis, totalsList, batchSize, minAcceptableDelta, numIterations, relative=true){
+      let fromTimeMillis = (relative)? startBatchRunTimeMillis : startBatchRunTimeMillis;
+      let fromIndex      = (relative && totalsList.length > 2)? totalsList.length - 2   : 0;
+
+      let nowMillis = Date.now();
+      let frameRate = batchSize / ((nowMillis - fromTimeMillis) / 1000);
+      let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
+      let totals = calcDyeAndWaterTotalsInWorld(world);
+      totalsList.push(totals);
+      if (totalsList.length > 1) {
+        const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
+        if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
+          console.log(`WARNING: delta error > ${minAcceptableDelta}
+            prev: ${JSON.stringify(totalsList[fromIndex])}
+            last: ${JSON.stringify(totalsList[totalsList.length - 1])}`);
+            console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
+        }
+        if (relative) {
+          startBatchRunTimeMillis = nowMillis;
+        }
+      }
+      console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)} (on surface: ${totals.waterAmountOnSurface.toFixed(1)})`);
+
+      {
+        const names = world.Processes.slice(0);
+        names.push('gridToImageData');
+
+        const processTimings = names.map(name => {
+          const timingsList = world.processTimings[name];
+          const lastFew = timingsList.slice(- batchSize);
+          const avg = lastFew.reduce( (prev, curr) => prev + curr ) / lastFew.length;
+          return `${name}: ${avg.toFixed(0)}`;
+        });
+
+        console.log(`process timings: ${processTimings.join(', ')}`);
+      }
+
+      return startBatchRunTimeMillis;
+    }
+
     function createPaper(canvas, maxIterations=100, urlParams){
-
-
-
 
         function createPaperAddDropsAndRun() {
           const context = canvas.getContext('2d');
@@ -857,44 +894,6 @@
           // console.log(`     totals=${JSON.stringify(totals)}`);
           const totalsList = [totals];
 
-          function calcAndDisplayTotals(relative=true){
-            let fromTimeMillis = (relative)? startBatchRunTimeMillis : startBatchRunTimeMillis;
-            let fromIndex      = (relative && totalsList.length > 2)? totalsList.length - 2   : 0;
-
-            let nowMillis = Date.now();
-            let frameRate = batchSize / ((nowMillis - fromTimeMillis) / 1000);
-            let pixelRate = batchSize * world.width * world.height / ((nowMillis - startBatchRunTimeMillis) / 1000);
-            let totals = calcDyeAndWaterTotalsInWorld(world);
-            totalsList.push(totals);
-            if (totalsList.length > 1) {
-              const totalsDelta = calcDyeAndWaterTotalDelta(totalsList, relative);
-              if (Math.abs(totalsDelta.waterAmountTotal) > minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > minAcceptableDelta) {
-                console.log(`WARNING: delta error > ${minAcceptableDelta}
-                  prev: ${JSON.stringify(totalsList[fromIndex])}
-                  last: ${JSON.stringify(totalsList[totalsList.length - 1])}`);
-                  console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
-              }
-              if (relative) {
-                startBatchRunTimeMillis = nowMillis;
-              }
-            }
-            console.log(`iteration=${numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)} (on surface: ${totals.waterAmountOnSurface.toFixed(1)})`);
-
-            {
-              const names = world.Processes.slice(0);
-              names.push('gridToImageData');
-
-              const processTimings = names.map(name => {
-                const timingsList = world.processTimings[name];
-                const lastFew = timingsList.slice(- batchSize);
-                const avg = lastFew.reduce( (prev, curr) => prev + curr ) / lastFew.length;
-                return `${name}: ${avg.toFixed(0)}`;
-              });
-
-              console.log(`process timings: ${processTimings.join(', ')}`);
-            }
-          }
-
           function iterateAndDisplayWorld(){
             // console.log(`world iteration=${numIterations} of ${maxIterations}`);
             world.stepWithCount();
@@ -908,8 +907,10 @@
               world.addProcessTiming('gridToImageData', endDisplayMillis - startDisplayMillis);
             }
 
+            const relative = true;
+
             if ((numIterations % batchSize == 0) || numIterations==1 ) {
-              calcAndDisplayTotals();
+              startBatchRunTimeMillis = calcAndDisplayTotals(startBatchRunTimeMillis, totalsList, batchSize, minAcceptableDelta, numIterations, relative);
             }
 
             numIterations = numIterations + 1;
@@ -918,8 +919,7 @@
             if (   (numIterations >= maxIterations)
                 || ((numIterations > batchSize) && (waterRemaining <= 0))
               ) {
-                const relative = true;
-                calcAndDisplayTotals(!relative);
+                startBatchRunTimeMillis = calcAndDisplayTotals(startBatchRunTimeMillis, totalsList, batchSize, minAcceptableDelta, numIterations, !relative);
                 console.log(`iterations ended.`);
                 window.dispatchEvent( new Event('StopRecording') );
             } else {
