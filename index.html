@@ -900,55 +900,67 @@
       const qsMinusQM = queryString.replace(/^\?/, '');
       const qsParamStrings = qsMinusQM.split(/&/);
 
-      const defaultconfigs = createDefaultConfigs();
       const configs = {};
       const history = {
         queryString : queryString,
           jsonList : [],
-          defaults : JSON.stringify(defaultconfigs)
         };
 
-      // pre-populate the configs with the defaults
-      Object.keys(defaultconfigs).forEach(k => {
-        configs[k] = defaultconfigs[k];
-      });
+      // look for all candidate configs,
+      const candidateKeyValueMap = {};
 
-      // look for overrides to known configs, ignoring unknown configs
       for (let paramString of qsParamStrings) {
         const match = paramString.match(/^([^=]+)=(.*)/);
         if (match) {
           const name = match[1];
           const value = decodeURIComponent(match[2]);
 
-          // build up a list of KV pairs
-          const keyValuePairs = [];
-
           if (name == 'json') {
             const jsonObj = JSON.parse(value);
             Object.keys( jsonObj ).forEach(k => {
-              keyValuePairs.push( [k, jsonObj[k]] );
+              candidateKeyValueMap[k] = jsonObj[k];
             });
             history.jsonList.push(value);
           } else {
-            keyValuePairs.push( [name, value] );
+            candidateKeyValueMap[name] = value;
           }
+        }
+      }
 
-          // loop over each KV pair and update configs if the key is known
-          for( let kvp of keyValuePairs ) {
-            const key = kvp[0];
-            if (defaultconfigs.hasOwnProperty(key)) {
-              let value = kvp[1];
-              let defaultValuetype = typeof defaultconfigs[key];
-              if (defaultValuetype === 'boolean') {
-                value = (value == 'true');
-              } else if (defaultValuetype === 'number') {
-                const parsed = parseFloat(value);
-                if (isNaN(parsed) ) { continue; }
+      // loop over each DefaultConfigs config and update configs if the candidate config key+value pass muster
+      for (let key of Object.keys(DefaultConfigs)) {
+        let value = DefaultConfigs[key];
+        if (candidateKeyValueMap.hasOwnProperty(key)) {
+          const candidateValue = candidateKeyValueMap[key];
+          const details = DefaultConfigs[key];
+
+          let defaultValuetype = typeof details.value;
+          if (defaultValuetype === 'boolean') {
+            value = (candidateValue == 'true');
+          } else if (defaultValuetype === 'number') {
+            const parsed = parseFloat(candidateValue);
+            if (!isNaN(parsed) ) {
+              if (details.range) {
+                if (parsed >= details.range[0] && parsed <= details.range[1]) {
+                  value = parsed;
+                }
+              }
+            }
+          } else if (Array.isArray(details.value)) {
+            const parsed = JSON.parse(candidateValue);
+            if (Array.isArray(parsed)) {
+              if (details.known) {
+                const knownInNewValue = parsed.filter(v => { return details.known.includes(v) });
+                if (knownInNewValue.length > 0) {
+                  value = parsed;
+                }
+              } else {
                 value = parsed;
               }
-              configs[ key ] = value;
             }
           }
+
+          configs[ key ] = value;
         }
       }
 
@@ -964,6 +976,27 @@
                record : false,
       };
     }
+
+    const ARBITRARY_MAX = 1000;
+    const DefaultConfigs = [
+      {
+               name : 'size',
+              value : 100,
+              range : [1, ARBITRARY_MAX],
+        description : 'dimensions of square canvas & grid',
+      },
+      {
+        name : 'maxIterations',
+              value : 2000,
+              range : [0, 10*ARBITRARY_MAX],
+        description : 'upper limit for iteration, assuming there is still water in or on the paper',
+      },
+      {
+               name : 'record',
+              value : false,
+        description : 'to record the canvas animation as a webm file',
+      },
+    ];
 
     function startRecording( canvas, codeVersion ){
       /* set up the recording of the canvas animations */
