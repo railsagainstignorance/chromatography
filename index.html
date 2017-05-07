@@ -869,6 +869,29 @@
       }
     }
 
+    function addDrops(details){
+      // addDrops({
+      //   num : 1,
+      //   xRange: [0, world.width],
+      //   yRange: [0, world.height],
+      //   rRange: [2, world.width/3],
+      //   vRange: [10000, 10000]
+      // });
+
+      function randomWithinRange(range){
+        return range[0] + (range[1] - range[0]) * Math.random();
+      }
+
+      for (var i = 0; i < details.num; i++) {
+        world.addBigDrop(
+          randomWithinRange(details.xRange),
+          randomWithinRange(details.yRange),
+          randomWithinRange(details.rRange),
+          WaterSpot.createBigRandomDrop(randomWithinRange(details.vRange))
+        );
+      }
+    }
+
     function createPaper(canvas, maxIterations=100, urlParams){
 
         function createPaperAddDropsAndRun() {
@@ -889,14 +912,6 @@
                    minAcceptableDelta : 0.1,
                            totalsList : [calcDyeAndWaterTotalsInWorld(world)],
           };
-          // let numIterations=1;
-          // let batchSize = 10;
-          // const startOverallRunTimeMillis = Date.now();
-          // let   startBatchRunTimeMillis   = Date.now();
-          // const minAcceptableDelta = 0.1;
-          //
-          // const totalsList = [totals];
-          // let totals = calcDyeAndWaterTotalsInWorld(world);
 
           console.log(`iteration=0,`);
 
@@ -933,24 +948,13 @@
             }
           }
 
-          // always have a drop on (1,1) for debugging
-          world.addBigDrop(
-            1,
-            1,
-            10+(Math.random()*20),
-            WaterSpot.createBigRandomDrop()
-          );
-
-          const numDropsAcross = 1;
-          const dropSpacing = world.width / (numDropsAcross+1);
-          for (var i = 0; i < numDropsAcross; i++) {
-            let x = world.width * Math.random();
-            let y = world.height * Math.random();
-            let r = 2+(Math.random()*world.width)/3;
-            let h = 0.1 + Math.random()*4;
-            let v = 10000;
-            world.addBigDrop(x, y, r, WaterSpot.createBigRandomDrop(v));
-          }
+          addDrops({
+               num : 1,
+            xRange : [0, world.width],
+            yRange : [0, world.height],
+            rRange : [2, world.width/3],
+            vRange : [10000, 10000]
+          });
 
           iterateAndDisplayWorld();
         }
