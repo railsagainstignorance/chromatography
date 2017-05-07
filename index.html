@@ -907,8 +907,7 @@
       console.log(`iteration=${iterationDetails.numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)} (on surface: ${totals.waterAmountOnSurface.toFixed(1)})`);
 
       {
-        const names = world.Processes.slice(0);
-        names.push('gridToImageData');
+        const names = Object.keys(world.processTimings);
 
         const processTimings = names.map(name => {
           const timingsList = world.processTimings[name];
