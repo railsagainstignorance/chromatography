@@ -929,12 +929,13 @@
         }
       }
 
-      // loop over each DefaultConfigs config and update configs if the candidate config key+value pass muster
-      for (let key of Object.keys(DefaultConfigs)) {
-        let value = DefaultConfigs[key];
+      const CombinedDefaultConfig = Object.assign({}, DefaultConfig, CAWorld.DefaultConfig);
+      // loop over each CombinedDefaultConfig config and update configs if the candidate config key+value pass muster
+      for (let key of Object.keys(CombinedDefaultConfig)) {
+        let value = CombinedDefaultConfig[key];
         if (candidateKeyValueMap.hasOwnProperty(key)) {
           const candidateValue = candidateKeyValueMap[key];
-          const details = DefaultConfigs[key];
+          const details = CombinedDefaultConfig[key];
 
           let defaultValuetype = typeof details.value;
           if (defaultValuetype === 'boolean') {
@@ -974,7 +975,7 @@
         }
       }
 
-      const unrecognisedKeys = Object.keys(candidateKeyValueMap).filter( k => { return ! DefaultConfigs.hasOwnProperty(k); });
+      const unrecognisedKeys = Object.keys(candidateKeyValueMap).filter( k => { return ! CombinedDefaultConfig.hasOwnProperty(k); });
       if (unrecognisedKeys.length > 0) {
         console.log(`parseUrlParams: contains unrecognised keys: ${unrecognisedKeys}`);
       }
@@ -985,7 +986,7 @@
     }
 
     const ARBITRARY_MAX = 1000;
-    const DefaultConfigs = {
+    const DefaultConfig = {
       size: {
               value : 100,
               range : [1, ARBITRARY_MAX],
@@ -1043,11 +1044,7 @@
         const context = canvas.getContext('2d');
         console.log(`canvas.width=${canvas.width}, canvas.height=${canvas.height}`);
         const imageData = context.getImageData(0,0,canvas.width,canvas.height);
-        const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, {
-          Processes : ['surfaceFlow', 'sanityCheckValue'],
-          SpreadMinAmountToGoToDry: 1,
-          SpreadSlopeFactor: 0.01,
-        });
+        const world = createWorldOfBlottingPaperAndDyes(imageData.width, imageData.height, configs);
 
         const iterationDetails = {
                       numIterations : 1,
