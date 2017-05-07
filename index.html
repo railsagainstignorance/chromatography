@@ -953,16 +953,13 @@
       };
     }
 
-    function createPaper(canvas, maxIterations, queryString){
+    function createPaper(canvas, queryString){
 
       const configs = parseUrlParams(queryString);
       console.log(`configs: ${JSON.stringify(configs, null, ' ')}`);
       if (configs['size'] && configs['size'] > 1) {
         canvas.setAttribute('height', configs['size']);
         canvas.setAttribute( 'width', configs['size']);
-      }
-      if (configs.maxIterations > 1) {
-        maxIterations = configs.maxIterations;
       }
 
       function createPaperAddDropsAndRun() {
@@ -977,7 +974,7 @@
 
         const iterationDetails = {
                       numIterations : 1,
-                      maxIterations : maxIterations,
+                      maxIterations : configs.maxIterations,
                           batchSize : 10,
           startOverallRunTimeMillis : Date.now(),
             startBatchRunTimeMillis : Date.now(),
@@ -988,7 +985,6 @@
         console.log(`iteration=0,`);
 
         function iterateAndDisplayWorld(){
-          // console.log(`world iteration=${numIterations} of ${maxIterations}`);
           world.stepWithCount();
 
           {
@@ -1051,7 +1047,6 @@
   <script>
   (function(){
     const codeVersion = '2-0'; // affects filename of recording
-    const maxIterations = 2000;
 
     const canvas = document.getElementById('myCanvas');
     const context = canvas.getContext('2d');
@@ -1084,7 +1079,7 @@
     }
 
     {
-      var paper = Chroma.createPaper(canvas, maxIterations, location.search);
+      var paper = Chroma.createPaper(canvas, location.search);
       window.setTimeout(paper.run, 100);
     }
   })();
