@@ -892,7 +892,46 @@
       }
     }
 
-    function createPaper(canvas, maxIterations, urlParams){
+    // create a map of key/value pairs,
+    // expanding any key==json into an obj, assuming it is a map, and folding its key/value pairs into the main map,
+    // recording assorted info in the history.
+    function parseUrlParams( queryString ) {
+      const qsMinusQM = queryString.replace(/^\?/, '');
+      const qsParamStrings = qsMinusQM.split(/&/);
+
+      const params = {
+        history : {
+          queryString : queryString,
+                 json : []
+        }
+      };
+
+      for (let paramString of qsParamStrings) {
+        const match = paramString.match(/^([^=]+)=(.*)/);
+        if (match) {
+          const name = match[1];
+          const value = decodeURIComponent(match[2]);
+
+          if (name == 'json') {
+            const jsonObj = JSON.parse(value);
+            // console.log(`DEBUG: jsonObj=${JSON.stringify(jsonObj)}`);
+            Object.keys( jsonObj ).forEach(k => {
+              params[k] = jsonObj[k];
+            });
+            params['history']['json'].push(value);
+          } else {
+            params[name] = value;
+          }
+        }
+      }
+
+      return params;
+    }
+
+    function createPaper(canvas, maxIterations, queryString){
+
+      configParams = parseUrlParams(queryString);
+      console.log(`configParams: ${JSON.stringify(configParams, null, ' ')}`);
 
         function createPaperAddDropsAndRun() {
           const context = canvas.getContext('2d');
@@ -1013,8 +1052,7 @@
     }
 
     {
-      var urlParams = new URLSearchParams(window.location.search);
-      var paper = Chroma.createPaper(canvas, maxIterations, urlParams);
+      var paper = Chroma.createPaper(canvas, maxIterations, location.search);
       window.setTimeout(paper.run, 100);
     }
   })();
