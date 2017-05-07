@@ -933,17 +933,21 @@
           }
 
           // loop over each KV pair and update configs if the key is known
-          keyValuePairs.forEach(kvp => {
+          for( let kvp of keyValuePairs ) {
             const key = kvp[0];
             if (defaultconfigs.hasOwnProperty(key)) {
               let value = kvp[1];
               let defaultValuetype = typeof defaultconfigs[key];
               if (defaultValuetype === 'boolean') {
                 value = (value == 'true');
+              } else if (defaultValuetype === 'number') {
+                const parsed = parseFloat(value);
+                if (isNaN(parsed) ) { continue; }
+                value = parsed;
               }
               configs[ key ] = value;
             }
-          });
+          }
         }
       }
 
