@@ -892,7 +892,7 @@
       }
     }
 
-    function createPaper(canvas, maxIterations=100, urlParams){
+    function createPaper(canvas, maxIterations, urlParams){
 
         function createPaperAddDropsAndRun() {
           const context = canvas.getContext('2d');
@@ -906,6 +906,7 @@
 
           const iterationDetails = {
                         numIterations : 1,
+                        maxIterations : maxIterations,
                             batchSize : 10,
             startOverallRunTimeMillis : Date.now(),
               startBatchRunTimeMillis : Date.now(),
