@@ -258,7 +258,7 @@
     // accept a centre x,y of a drop of radius r, containing full WaterSpot of ink+water.
     // expand into a call to addDroplets
 
-    CAWorld.prototype.addBigDrop = function(centreX, centreY, r, waterSpot) {
+    CAWorld.prototype.addBigDrop = function(centreX, centreY, r, v) {
       const fromX = Math.floor( Math.max(centreX - r, 0));
       const   toX = Math.floor( Math.min(centreX + r, this.height-1));
       const fromY = Math.floor( Math.max(centreY - r, 0));
@@ -280,7 +280,7 @@
 
       // assume waterSpot is divided equally between droplets
       const numDroplets = spotsWithCoords.length;
-      const droplet = waterSpot.clone().divideBy(numDroplets);
+      const droplet = WaterSpot.createBigRandomDrop(v);
 
       spotsWithCoords.forEach(swc => {
         swc.droplet = droplet.clone();
@@ -938,7 +938,7 @@
           randomWithinRange(details.xRange),
           randomWithinRange(details.yRange),
           randomWithinRange(details.rRange),
-          WaterSpot.createBigRandomDrop(randomWithinRange(details.vRange))
+          randomWithinRange(details.vRange)
         );
       }
     }
