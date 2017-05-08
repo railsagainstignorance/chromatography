@@ -384,6 +384,16 @@
               range : [1, CAWorld.ARBITRARY_MAX],
         description : "divide DownhillTipRatio by this factor for the corner nhrs"
       },
+      ScaleForFlowToWet : {
+              value : 1,
+              range : [0, 2],
+        description : "speed or slow the flow from wet to wet surface"
+      },
+      ScaleForFlowToDry : {
+              value : 1,
+              range : [0, 2],
+        description : "speed or slow the flow from wet to dry surface"
+      },
       PaperAbsorptionFactor : {
               value : 0.5,
               range : [0, 1],
@@ -583,7 +593,9 @@
             const thisTargetAmount = totalAmounts * downhillTipRatio / (downhillTipRatio + 1);
             const nhbrTargetAmount = totalAmounts * 1                / (downhillTipRatio + 1);
             const nhbrWaterDelta = nhbrTargetAmount - nhbrValueWaterSpotWaterAmount;  // +ve means from here, -ve from nhbr.
-            const waterAmountFlowing = nhbrWaterDelta / 8;   // divided by 8 because is only one of 8 different here<->nhbr interactions.
+
+            const scaleForFlowToWetOrDry = (thisValueWaterSpot.waterAmount > 0 && nhbrValueWaterSpotWaterAmount > 0)? world.ScaleForFlowToWet : world.ScaleForFlowToDry;
+            const waterAmountFlowing = nhbrWaterDelta * scaleForFlowToWetOrDry / 8;   // divided by 8 because is only one of 8 different here<->nhbr interactions.
 
             if (waterAmountFlowing == 0) {
               return;
