@@ -374,10 +374,15 @@
               range : [0, CAWorld.ARBITRARY_MAX],
         description : "cell needs this min amount of surface water before spreading to a dry cell"
       },
-      SpreadSlopeFactor : {
-              value : 0.1,
-              range : [0, CAWorld.ARBITRARY_MAX],
+      DownhillTipRatio : {
+              value : 5,
+              range : [1, CAWorld.ARBITRARY_MAX],
         description : "if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor"
+      },
+      DownhillTipRatioPartialDivisor : {
+              value : Math.SQRT2,
+              range : [1, CAWorld.ARBITRARY_MAX],
+        description : "divide DownhillTipRatio by this factor for the corner nhrs"
       },
       PaperAbsorptionFactor : {
               value : 0.5,
@@ -525,7 +530,9 @@
           //    - when both cells are wet, flow towards midpoint of water amounts
           //    - when both cells are dry, nothing happens
           //    - when one cell is wet, the other dry, the wet one flows into the dry one if there is a min amount
-          //    - if there is a slope, the min amount is adjusted accordingly (down for downhill, up for uphill)
+          //    - if there is a slope,
+          //      the min amount is adjusted accordingly (down for downhill, up for uphill),
+          //      the resultant water amounts are also adjusted (large for downhill)
           //    - dividing any amounts by 8
           //    - surface characteristics? could adjust the min height amount...
           //    - dyes flow in the same proportion as the water
@@ -535,41 +542,49 @@
           const thisValueWaterSpot = this.value.waterSpot;
           const thisValuePaperSpot = this.value.paperSpot;
 
-          function flowWithNhbr(direction, factorForMinHeight){
-            // factorForMinHeight is factor when calculated from this cell.
-            // - to multiply world.SpreadMinAmountToGoToDry
-            // - Invert if from nhbr.
-
-            const nhbr = neighbors[direction.index];
-
+          function flowWithNhbr(direction, downhillTipRatio){
+            // downhillTipRatio is factor when calculated from this cell.
+            // -- to multiply world.SpreadMinAmountToGoToDry
+            // -- Invert if from nhbr.
+            // -- ==1 for level
+            // -- >1 for here is downhill side
+            // -- <1 for here is uphill sides
+            // -- always > 0
             // return as soon as we work out no flow will happen
 
+            const nhbr = neighbors[direction.index];
             let nhbrValueWaterSpot;
             let nhbrValueWaterSpotWaterAmount = 0;
             if (nhbr) {
               nhbrValueWaterSpot            = nhbr.value.waterSpot;
               nhbrValueWaterSpotWaterAmount = nhbrValueWaterSpot.waterAmount;
             }
-            // skip if both cells are dry, or here is dry and there is no nhbr
-            if ((thisValueWaterSpot.waterAmount == 0) && ((!nhbr) || (nhbrValueWaterSpotWaterAmount == 0))) {
+            // skip if both cells are dry (including if there is no nhbr)
+            if ((thisValueWaterSpot.waterAmount == 0) && (nhbrValueWaterSpotWaterAmount == 0)) {
               return;
             }
 
             // return if either nhbr is empty, and the other is not wet enough
             if (thisValueWaterSpot.waterAmount == 0) {
-              if (nhbrValueWaterSpotWaterAmount <= (world.SpreadMinAmountToGoToDry / factorForMinHeight)) {
+              if (nhbrValueWaterSpotWaterAmount <= (world.SpreadMinAmountToGoToDry * downhillTipRatio)) {
                 return;
               }
             } else if (nhbrValueWaterSpotWaterAmount == 0) {
-              if (thisValueWaterSpot.waterAmount <= (world.SpreadMinAmountToGoToDry * factorForMinHeight) ) {
+              if (thisValueWaterSpot.waterAmount <= (world.SpreadMinAmountToGoToDry / downhillTipRatio) ) {
                 return;
               }
             }
 
-            // The amount to flow is half the difference,
-            // divided by 8 because is only one of 8 different here<->nhbr interactions.
-            // +ve means from here, -ve from nhbr.
-            let waterAmountFlowing = (thisValueWaterSpot.waterAmount - nhbrValueWaterSpotWaterAmount) / (2 * 8) ;
+            // assume that once the SpreadMinAmountToGoToDry threshold is breached,
+            // water flows to the same levels as if both sides had started with water.
+
+            // calc target amounts
+            const totalAmounts = thisValueWaterSpot.waterAmount + nhbrValueWaterSpotWaterAmount;
+            const thisTargetAmount = totalAmounts * downhillTipRatio / (downhillTipRatio + 1);
+            const nhbrTargetAmount = totalAmounts * 1                / (downhillTipRatio + 1);
+            const nhbrWaterDelta = nhbrTargetAmount - nhbrValueWaterSpotWaterAmount;  // +ve means from here, -ve from nhbr.
+            const waterAmountFlowing = nhbrWaterDelta / 8;   // divided by 8 because is only one of 8 different here<->nhbr interactions.
+
             if (waterAmountFlowing == 0) {
               return;
             } else if (waterAmountFlowing > 0) { // from this cell to nhbr, so only record loss from this cell if there is no nhbr
@@ -595,15 +610,23 @@
             }
           }
 
-          // world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
-          flowWithNhbr(world.LEFT       , 1                                       );
-          flowWithNhbr(world.RIGHT      , 1                                       );
-          flowWithNhbr(world.BOTTOM     ,    world.SpreadSlopeFactor              ); // BOTTOM is down
-          flowWithNhbr(world.BOTTOMLEFT ,    world.SpreadSlopeFactor * Math.SQRT2 );
-          flowWithNhbr(world.BOTTOMRIGHT,    world.SpreadSlopeFactor * Math.SQRT2 );
-          flowWithNhbr(world.TOP        , 1/ world.SpreadSlopeFactor              );
-          flowWithNhbr(world.TOPLEFT    , 1/(world.SpreadSlopeFactor * Math.SQRT2));
-          flowWithNhbr(world.TOPRIGHT   , 1/(world.SpreadSlopeFactor * Math.SQRT2));
+          // assume
+          // - LEFT+RIGHT flow does not feel effect of slope
+          // - DOWN feels full effect slope
+          // - UP feels inverse of full effect of slope
+          // - DOWN LEFT+RIGHT feels partial effect of slope
+          // - UP LEFT+RIGHT feels inverse of partial effect of slope
+
+          const DownhillTipRatioPartial = world.DownhillTipRatio / world.DownhillTipRatioPartialDivisor;
+
+          flowWithNhbr(world.LEFT       , 1                           );
+          flowWithNhbr(world.RIGHT      , 1                           );
+          flowWithNhbr(world.TOP        ,     world.DownhillTipRatio  ); // TOP is down
+          flowWithNhbr(world.TOPLEFT    ,     DownhillTipRatioPartial );
+          flowWithNhbr(world.TOPRIGHT   ,     DownhillTipRatioPartial );
+          flowWithNhbr(world.BOTTOM     , 1 / world.DownhillTipRatio  ); // BOTTOM is up
+          flowWithNhbr(world.BOTTOMLEFT , 1 / DownhillTipRatioPartial );
+          flowWithNhbr(world.BOTTOMRIGHT, 1 / DownhillTipRatioPartial );
 
           return true;
         },
@@ -869,7 +892,7 @@
           dyeAmountsInPaper :   dyeAmountsInPaper,
           dyeAmountsInWater :   dyeAmountsInWater,
           dyeAmountsLost    : world.waterSpotLost.dyeAmounts,
-                  stepCount : world.stepCount
+                  stepCount : (world.stepCount === undefined)? 0 : world.stepCount,
       }
     }
 
@@ -895,9 +918,9 @@
       if (iterationDetails.totalsList.length > 1) {
         const totalsDelta = calcDyeAndWaterTotalDelta(iterationDetails.totalsList, relative);
         if (Math.abs(totalsDelta.waterAmountTotal) > iterationDetails.minAcceptableDelta || Math.abs(totalsDelta.dyeAmountTotal) > iterationDetails.minAcceptableDelta) {
-          console.log(`WARNING: delta error > ${minAcceptableDelta}
+          console.log(`WARNING: delta error > ${iterationDetails.minAcceptableDelta}
             prev: ${JSON.stringify(iterationDetails.totalsList[fromIndex])}
-            last: ${JSON.stringify(iterationDetails.totalsList[totalsList.length - 1])}`);
+            last: ${JSON.stringify(iterationDetails.totalsList[iterationDetails.totalsList.length - 1])}`);
             console.log(`       totalsDelta=${JSON.stringify(totalsDelta)}`);
         }
         if (relative) {
@@ -980,6 +1003,8 @@
       }
 
       const CombinedDefaultConfig = Object.assign({}, DefaultConfig, CAWorld.DefaultConfig);
+      history['CombinedDefaultConfig'] = CombinedDefaultConfig;
+
       // loop over each CombinedDefaultConfig config and update configs if the candidate config key+value pass muster
       for (let key of Object.keys(CombinedDefaultConfig)) {
         let value = CombinedDefaultConfig[key].value;
