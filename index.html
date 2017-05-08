@@ -772,29 +772,6 @@
 
     //------------
 
-    // function convertWorldGridToGridOfDyeAmounts(world, spotType='paperSpot'){
-    //   var worldGrid = world.grid;
-    //   var gridOfDyeAmounts = [];
-    //
-    //   // imageData reads from top left to bottom right
-    //   // world reads from bottom left to top right (I think)
-    //
-    //   for (var x = 0; x < world.width; x++) {
-    //     var col = [];
-    //     gridOfDyeAmounts.push(col);
-    //     for (var y = 0; y < world.height; y++) {
-    //       const cellValue = worldGrid[y][x].getCellValue();
-    //       let dyeAmounts;
-    //       if (spotType == 'paperSpot' || spotType == 'waterSpot') {
-    //         dyeAmounts = cellValue[spotType].dyeAmounts;
-    //       } else {
-    //         dyeAmounts = DYES.cloneAmounts(cellValue.paperSpot.dyeAmounts);
-    //         DYES.addAmounts(cellValue.waterSpot.dyeAmounts, dyeAmounts);
-    //       }
-    //       col.push( dyeAmounts );
-    //     }
-    //   }
-
     function writeWorldWaterAmountsToImageData(world, imageData){
       var worldGrid = world.grid;
       if ((imageData.width !== worldGrid.length) || (imageData.height !== worldGrid[0].length)) {
