@@ -18,6 +18,14 @@
     width: 400px;
     height: 400px;
   }
+  .remove {
+    display:none;
+  }
+
+  #configparams form table td {
+    border: 1px solid lightgrey;
+  }
+
   </style>
   <script src="assets/cellauto.min.js"></script>
   <script>
@@ -993,12 +1001,15 @@
 
       const CombinedDefaultConfig = Object.assign({}, DefaultConfig, CAWorld.DefaultConfig);
       history['CombinedDefaultConfig'] = CombinedDefaultConfig;
+      history['acceptedCandidateConfigs'] = {};
 
       // loop over each CombinedDefaultConfig config and update configs if the candidate config key+value pass muster
       for (let key of Object.keys(CombinedDefaultConfig)) {
         let value = CombinedDefaultConfig[key].value;
         if (candidateKeyValueMap.hasOwnProperty(key)) {
-          const candidateValue = candidateKeyValueMap[key];
+          const rawCandidateValue = candidateKeyValueMap[key];
+          const decodedCandidateValue = decodeURIComponent( rawCandidateValue );
+          const candidateValue = decodedCandidateValue.replace(/\+/g, ' ');
           const details = CombinedDefaultConfig[key];
 
           let defaultValuetype = typeof details.value;
@@ -1054,11 +1065,16 @@
               }
             }
           } else if (details.known) {
-            if (! details.known.includes(candidateValue) ) {
-              console.log(`parseUrlParams: unrecognised value, ${details.known}: ${key}=${candidateValue}`);
+            const candidateValueMinusSpeechmarks = candidateValue.replace(/^"(.*)"$/, '$1');
+            if (! details.known.includes(candidateValueMinusSpeechmarks) ) {
+              console.log(`parseUrlParams: unrecognised value, ${details.known}: ${key}=${candidateValueMinusSpeechmarks}`);
             } else {
-              value = candidateValue;
+              value = candidateValueMinusSpeechmarks;
             }
+          }
+
+          if (value != CombinedDefaultConfig[key].value) {
+            history['acceptedCandidateConfigs'][key] = candidateValue;
           }
         }
         configs[ key ] = value;
@@ -1158,6 +1174,62 @@
       window.addEventListener('StopRecording', e => { mediaRecorder.stop(); })
     }
 
+    function formOnSubmitFn(form){
+      for (tr of form.firstChild.childNodes) {
+        const input = tr.childNodes[1].firstChild;
+        if (input.type == 'text') {
+          if (input.value == "") {
+            input.disabled = true;
+          }
+        }
+      }
+      return true;
+    }
+
+    function writeParamsToForm(configs, formElt) {
+      formElt.innerHTML = "";
+      formElt.onsubmit = function(e){ return formOnSubmitFn(formElt); };
+      const tableElt = document.createElement("table");
+      const combinedDefaultConfig = configs.history.CombinedDefaultConfig;
+      for (name of Object.keys(combinedDefaultConfig)) {
+        const details = combinedDefaultConfig[name];
+
+        const trElt = document.createElement("tr");
+        const tdElt = document.createElement("td");
+        tdElt.textContent = name;
+        trElt.appendChild(tdElt);
+        const tdElt2 = document.createElement("td");
+        const inputElt = document.createElement("input");
+        inputElt.type = "text";
+        inputElt.name = name;
+        if (configs.history.acceptedCandidateConfigs.hasOwnProperty(name)) { inputElt.value = configs.history.acceptedCandidateConfigs[name]; }
+        tdElt2.appendChild(inputElt);
+        trElt.appendChild(tdElt2);
+        const tdElt3 = document.createElement("td");
+        tdElt3.appendChild( document.createTextNode("default: " + JSON.stringify(details.value, null, " ")) );
+        tdElt3.appendChild( document.createElement("br") );
+        if (details.known) {
+          tdElt3.appendChild( document.createTextNode("known: " + JSON.stringify(details.known, null, " ")) );
+          tdElt3.appendChild( document.createElement("br") );
+        }
+        if (details.type == 'range') {
+          tdElt3.appendChild( document.createTextNode("type==range: " + JSON.stringify(details.range)) );
+          tdElt3.appendChild( document.createElement("br") );
+        } else if (details.range) {
+          tdElt3.appendChild( document.createTextNode("range: " + JSON.stringify(details.range)) );
+          tdElt3.appendChild( document.createElement("br") );
+        }
+        tdElt3.appendChild( document.createTextNode(combinedDefaultConfig[name].description) );
+        trElt.appendChild(tdElt3);
+        tableElt.appendChild(trElt);
+      }
+      formElt.appendChild(tableElt);
+      const submitElt = document.createElement('input');
+      submitElt.type = 'submit';
+      submitElt.value = 'Submit';
+      formElt.appendChild(submitElt);
+    }
+
     function createPaper(canvas, queryString){
       const configs = parseUrlParams(queryString);
       console.log(`all configs: ${JSON.stringify(configs, null, ' ')}`);
@@ -1234,7 +1306,8 @@
       }
 
       return {
-        run: createPaperAddDropsAndRun
+                       run : createPaperAddDropsAndRun,
+        writeParamsToForm : function(inputDiv){ writeParamsToForm(configs, inputDiv); },
       }
     }
 
@@ -1250,10 +1323,23 @@
 
     <canvas class="blotting-paper" id="myCanvas" width="100" height="100"></canvas>
 
+  <div class="remove" id="configparams">
+    <h2>Config Params</h2>
+
+    <form action="/" id="configparamsform">
+    </form>
+
+  </div>
+
   <script>
   (function(){
-    const canvas = document.getElementById('myCanvas');
-    var paper = Chroma.createPaper(canvas, location.search);
+    const queryString = location.search;
+    const paper = Chroma.createPaper( document.getElementById('myCanvas'), queryString );
+    if (queryString !== "") {
+      const configparamsElt = document.getElementById('configparams');
+      configparamsElt.classList.remove('remove');
+      paper.writeParamsToForm( document.getElementById('configparamsform') );
+    }
     window.setTimeout(paper.run, 100);
   })();
   </script>
