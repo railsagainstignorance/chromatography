@@ -492,6 +492,19 @@
               known : ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
         description : 'the sequence of physical processes to run in turn on the grid',
       },
+      PaperSpotMaxWaterCapacityRange : {
+              value : [1,1],
+              range : [0, CAWorld.ARBITRARY_MAX],
+               type : 'range',
+        description : "range of possible values for each PaperSpot's max water capacity, chosen at random when each spot is first created",
+      },
+      PaperSpotWaterAbsorptionRateRange : {
+              value : [0.1,0.1],
+              range : [0, CAWorld.ARBITRARY_MAX],
+               type : 'range',
+        description : "range of possible values for each PaperSpot's waterAbsorptionRate, chosen at random when each spot is first created",
+      },
+
     };
 
     CAWorld.prototype.importConfig = function(config) {
@@ -505,21 +518,7 @@
           let value = details.value;
 
           if (config != undefined) {
-            const newValue = config[key];
-            if (newValue != undefined ) {
-              if (details.range) {
-                if (details.range[0] <= newValue && newValue <= details.range[1]) {
-                  value = newValue;
-                } else {
-                  console.log(`WARNING: world: config: override value specified for ${key}, ${newValue}, falls outside of permitted range, ${details.range}`)
-                }
-              } else if (details.known) {
-                const knownInNewValue = newValue.filter(v => { return details.known.includes(v) });
-                if (knownInNewValue.length > 0) {
-                  value = newValue;
-                }
-              }
-            }
+            value = config[key]; // assume configs have already been checked 
           }
 
           this.config[key] = value; // add to world config map, for documentation
@@ -836,7 +835,11 @@
     		}
     	}, function (x,y) {
     		//init
-        this.value = new CellSpot();
+        const paperSpotConfig = {
+             MaxWaterCapacity : randomWithinRange(world.PaperSpotMaxWaterCapacityRange),
+          WaterAbsorptionRate : randomWithinRange(world.PaperSpotWaterAbsorptionRateRange),
+        }
+        this.value = new CellSpot(null, 0, paperSpotConfig);
         this.prev  = this.value.clone(); // NB, clone so inherits config characteristics
     		this.next  = this.value.clone();
         this.x = x;
@@ -851,6 +854,10 @@
     }
 
     //------------
+
+    function randomWithinRange(range){
+      return range[0] + (range[1] - range[0]) * Math.random();
+    }
 
     function writeWorldWaterAmountsToImageData(world, imageData){
       var worldGrid = world.grid;
@@ -1009,10 +1016,6 @@
       //   vRange: [10000, 10000],
       //   dRange: [0:1 ish]
       // });
-
-      function randomWithinRange(range){
-        return range[0] + (range[1] - range[0]) * Math.random();
-      }
 
       for (var i = 0; i < details.num; i++) {
         world.addBigDrop(
