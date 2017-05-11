@@ -1157,6 +1157,16 @@
               range : [0, 10*ARBITRARY_MAX],
         description : 'upper limit for iteration, assuming there is still water in or on the paper',
       },
+      displayEveryN: {
+              value : 10,
+              range : [1, 10*ARBITRARY_MAX],
+        description : 'only actually display the latest image every N iterations',
+      },
+      batchSize: {
+              value : 10,
+              range : [1, 10*ARBITRARY_MAX],
+        description : 'recalc the stats (for display on console) every N iterations',
+      },
       record: {
               value : false,
         description : 'to record the canvas animation as a webm file',
@@ -1296,6 +1306,19 @@
       formElt.appendChild(submitElt);
     }
 
+    function displayWorld(configs, world, imageData, context) {
+      const startDisplayMillis = Date.now();
+      if (configs['viewType'] == 'dyeAmounts') {
+        let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, configs['spotType']);
+        DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData, configs['dyeSpace']);
+      } else if (configs['viewType'] == 'waterAmounts') {
+        writeWorldWaterAmountsToImageData(world, imageData);
+      }
+      context.putImageData(imageData, 0, 0);
+      const endDisplayMillis = Date.now();
+      world.addProcessTiming('gridToImageData', endDisplayMillis - startDisplayMillis);
+    }
+
     function createPaper(canvas, queryString){
       const configs = parseUrlParams(queryString);
       console.log(`all configs: ${JSON.stringify(configs, null, ' ')}`);
@@ -1315,7 +1338,7 @@
         const iterationDetails = {
                       numIterations : 1,
                       maxIterations : configs.maxIterations,
-                          batchSize : 10,
+                          batchSize : configs['batchSize'],
           startOverallRunTimeMillis : Date.now(),
             startBatchRunTimeMillis : Date.now(),
                  minAcceptableDelta : 0.1,
@@ -1327,17 +1350,8 @@
         function iterateAndDisplayWorld(){
           world.stepWithCount();
 
-          {
-            const startDisplayMillis = Date.now();
-            if (configs['viewType'] == 'dyeAmounts') {
-              let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, configs['spotType']);
-              DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData, configs['dyeSpace']);
-            } else if (configs['viewType'] == 'waterAmounts') {
-              writeWorldWaterAmountsToImageData(world, imageData);
-            }
-            context.putImageData(imageData, 0, 0);
-            const endDisplayMillis = Date.now();
-            world.addProcessTiming('gridToImageData', endDisplayMillis - startDisplayMillis);
+          if (iterationDetails.numIterations % configs['displayEveryN'] == 1) {
+            displayWorld(configs, world, imageData, context);
           }
 
           const relative = true;
@@ -1352,6 +1366,7 @@
           if (   (iterationDetails.numIterations >= iterationDetails.maxIterations)
               || ((iterationDetails.numIterations > iterationDetails.batchSize) && (waterRemaining <= 0))
             ) {
+              displayWorld(configs, world, imageData, context);
               calcAndDisplayTotals(iterationDetails, !relative);
               console.log(`iterations ended.`);
               window.dispatchEvent( new Event('StopRecording') );
