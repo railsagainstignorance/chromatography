@@ -17,9 +17,10 @@ And some code for CMYK --> RGB via http://stackoverflow.com/questions/8869248/us
 
 ### steps
 
-* create a CMY spec for each dyes
-* tweak the maths to implement the above alg
+* create a CMY spec for each dyes. DONE
+* tweak the maths to implement the above alg. DONE.
 * render the image every N iterations (is now slowest part of cycle)
+* add a dilution factor for the droplets
 
 ## The plan - part 3
 

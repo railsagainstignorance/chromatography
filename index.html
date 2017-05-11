@@ -266,11 +266,11 @@
       return drop;
     }
 
-    WaterSpot.createBigRandomDrop = function(volume=1) {
+    WaterSpot.createBigRandomDrop = function(volume=1, dilution=1) {
       const waterAmount = volume;
       const dyeAmounts = DYES.newEmptyDyeAmounts();
       for (var i = 0; i < dyeAmounts.length; i++) {
-        dyeAmounts[i] = volume*3*Math.random();
+        dyeAmounts[i] = volume*Math.random()*dilution;
       }
       const drop = new WaterSpot(waterAmount, dyeAmounts);
       return drop;
@@ -319,7 +319,7 @@
     // accept a centre x,y of a drop of radius r, containing full WaterSpot of ink+water.
     // expand into a call to addDroplets
 
-    CAWorld.prototype.addBigDrop = function(centreX, centreY, r, v) {
+    CAWorld.prototype.addBigDrop = function(centreX, centreY, r, v, d) {
       const fromX = Math.floor( Math.max(centreX - r, 0));
       const   toX = Math.floor( Math.min(centreX + r, this.height-1));
       const fromY = Math.floor( Math.max(centreY - r, 0));
@@ -341,7 +341,7 @@
 
       // assume waterSpot is divided equally between droplets
       const numDroplets = spotsWithCoords.length;
-      const droplet = WaterSpot.createBigRandomDrop(v);
+      const droplet = WaterSpot.createBigRandomDrop(v, d);
 
       spotsWithCoords.forEach(swc => {
         swc.droplet = droplet.clone();
@@ -999,7 +999,8 @@
       //   xRange: [0, world.width],
       //   yRange: [0, world.height],
       //   rRange: [2, world.width/3],
-      //   vRange: [10000, 10000]
+      //   vRange: [10000, 10000],
+      //   dRange: [0:1 ish]
       // });
 
       function randomWithinRange(range){
@@ -1011,7 +1012,8 @@
           randomWithinRange(details.xRange),
           randomWithinRange(details.yRange),
           randomWithinRange(details.rRange),
-          randomWithinRange(details.vRange)
+          randomWithinRange(details.vRange),
+          randomWithinRange(details.dRange)
         );
       }
     }
@@ -1188,6 +1190,12 @@
                type : 'range',
         description : 'min/max of volume as a proportion of world.width',
       },
+      dropsDRange: {
+              value : [0.75,0.75],
+              range : [0, 10*ARBITRARY_MAX],
+               type : 'range',
+        description : 'min/max of dilution of dyes in water in droplet. 0 means no dye in water, 1 means same amount of dye as water, > 1 means more dye than water.',
+      },
       spotType: {
               value : 'cellSpot',
               known : ['cellSpot', 'waterSpot', 'paperSpot'],
@@ -1357,7 +1365,8 @@
           xRange : configs.dropsXRange.map(n => {return n * world.width ;}),
           yRange : configs.dropsYRange.map(n => {return n * world.height;}),
           rRange : configs.dropsRRange.map(n => {return n * world.width ;}),
-          vRange : configs.dropsVRange
+          vRange : configs.dropsVRange,
+          dRange : configs.dropsDRange
         });
 
         iterateAndDisplayWorld();
