@@ -195,26 +195,32 @@
 
     //------------
 
-    var PaperSpot = function(dyeAmounts, waterAmount){
-      this.dyeAmounts  =  (dyeAmounts)? dyeAmounts.slice(0) : DYES.newEmptyDyeAmounts();
-      this.waterAmount = (waterAmount)?        waterAmounts : 0;
+    var PaperSpot = function(dyeAmounts, waterAmount=0, configs={}){
+      this.dyeAmounts  = (dyeAmounts)? dyeAmounts.slice(0) : DYES.newEmptyDyeAmounts();
+      this.waterAmount = waterAmount;
+      this._configs = configs;
+      for (c of Object.keys(this._defaultConfigs)) {
+        this[c] = (configs.hasOwnProperty(c))? configs[c] : this._defaultConfigs[c];
+      }
     }
 
     PaperSpot.prototype = (function () {
       /* private members */
-      let maxWaterCapacity = 1;
+      let _defaultConfigs = {
+        MaxWaterCapacity : 1,
+        WaterAbsorptionRate : 0.1,
+      };
       /* public members */
       return {
-           MaxWaterCapacity: maxWaterCapacity,
-        WaterAbsorptionRate: 0.1,
-                      clone: function(){ return new Paperspot(this.dyeAmounts, this.waterAmount); },
+        _defaultConfigs : _defaultConfigs,
+                      clone: function(){ return new Paperspot(this.dyeAmounts, this.waterAmount, this._configs); },
                   stringify: function(){ return JSON.stringify(this); },
                        copy: function(from){
                          this.waterAmount = from.waterAmount;
                          DYES.copyAmounts(from.dyeAmounts, this.dyeAmounts);
                        },
                  addDroplet: function(drop){
-                    this.waterAmount = Math.min(this.waterAmount + drop.waterAmount, maxWaterCapacity);
+                    this.waterAmount = Math.min(this.waterAmount + drop.waterAmount, this.MaxWaterCapacity);
                     for (var i = 0; i < this.dyeAmounts.length; i++) {
                       this.dyeAmounts[i] = this.dyeAmounts[i] + drop.dyeAmounts[i];
                     }

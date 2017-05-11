@@ -5,6 +5,15 @@ This might work: https://railsagainstignorance.github.io/chromatography/?size=40
 
 Inspired by https://twitter.com/tylhobbs/status/855529052052090881, and then stumbling on [cellauto](http://sanojian.github.io/cellauto/), I fancied a crack at trying to model the physics of chromatography more closely, to see if we could achieve, in-browser, something as lovely as the [FT Labs logo](http://labs.ft.com).
 
+## The plan - part 5
+
+Add variability into the cells in the paper
+
+### steps
+
+* paperSpots having different absorbence rates
+* paperSpots having different water repulsion when dry
+
 ## The plan - part 4
 
 Do colour good. Finally found a clear description of what this colour thing is all about: http://dba.med.sc.edu/price/irf/Adobe_tg/models/rgbcmy.html, in particular this bit:
@@ -19,8 +28,8 @@ And some code for CMYK --> RGB via http://stackoverflow.com/questions/8869248/us
 
 * create a CMY spec for each dyes. DONE
 * tweak the maths to implement the above alg. DONE.
-* render the image every N iterations (is now slowest part of cycle)
-* add a dilution factor for the droplets
+* render the image every N iterations (is now slowest part of cycle). DONE
+* add a dilution factor for the droplets. DONE
 
 ## The plan - part 3
 
