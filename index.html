@@ -213,7 +213,7 @@
       /* public members */
       return {
         _defaultConfigs : _defaultConfigs,
-                      clone: function(){ return new Paperspot(this.dyeAmounts, this.waterAmount, this._configs); },
+                      clone: function(){ return new PaperSpot(this.dyeAmounts, this.waterAmount, this._configs); },
                   stringify: function(){ return JSON.stringify(this); },
                        copy: function(from){
                          this.waterAmount = from.waterAmount;
@@ -284,9 +284,10 @@
 
     //------------
 
-    var CellSpot = function(paperSpot, waterSpot){
-      this.paperSpot = (paperSpot)? paperSpot.clone() : new PaperSpot();
+    var CellSpot = function(paperSpot, waterSpot, paperConfigs={}){
+      this.paperSpot = (paperSpot)? paperSpot.clone() : new PaperSpot(null, 0, paperConfigs);
       this.waterSpot = (waterSpot)? waterSpot.clone() : new WaterSpot();
+      this.paperConfigs = paperConfigs;
     }
 
     CellSpot.prototype = (function(){
@@ -294,7 +295,7 @@
 
       /* public members */
       return {
-              clone: function(){ return new CellSpot(this.paperSpot, this.waterSpot); },
+              clone: function(){ return new CellSpot(this.paperSpot, this.waterSpot, this.paperConfigs); },
          addDroplet: function(drop){ this.waterSpot.addDroplet(drop); },
           stringify: function(){ return JSON.stringify(this); },
                copy: function(from){
@@ -836,8 +837,8 @@
     	}, function (x,y) {
     		//init
         this.value = new CellSpot();
-        this.prev  = new CellSpot();
-    		this.next  = new CellSpot();
+        this.prev  = this.value.clone(); // NB, clone so inherits config characteristics
+    		this.next  = this.value.clone();
         this.x = x;
         this.y = y;
     	});
