@@ -28,6 +28,7 @@
 
   </style>
   <script src="assets/cellauto.min.js"></script>
+  <script src="assets/chroma.min.js"></script>
   <script>
     window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
   </script>
@@ -95,7 +96,7 @@
       }
     }
 
-    DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
+    DYES.combineDyesIntoRgbaPixelV1 = function(dyeAmounts) {
       // return [R, G, B, A]
       // assume no dyes => full white
 
@@ -122,7 +123,34 @@
       return rgba;
     }
 
-    DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData){
+    DYES.combineDyesIntoRgbaPixelByColorSpace = function(dyeAmounts, colorMode) {
+      // return [R, G, B, A]
+
+      // create color per dye
+      // average using color space
+      // generate rgb
+      // add a
+      // return
+
+      const dyeColors = [];
+      for (var d = 0; d < this.length; d++) {
+        const rgb = new Array(3);
+        for (var i = 0; i < 3; i++) {
+          rgb[i] = Math.min(255, 255 * dyeAmounts[d] * this[d].RGBPattern[i]);
+        }
+        dyeColors.push(rgb);
+      }
+
+      let combinedRGB = chroma.average(dyeColors, colorMode).rgb();
+      // if (combinedRGB[0] == 0 && combinedRGB[1] == 0 && combinedRGB[2] == 0) {
+      //   combinedRGB = new Array(3).fill(255);
+      // }
+
+      combinedRGB.push(255);
+      return combinedRGB;
+    }
+
+    DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData, colorMode='lab'){
       if ((imageData.width !== grid.length) || (imageData.height !== grid[0].length)) {
         throw new Error(`Error: mismatch found between size of grid and imageData`);
       }
@@ -130,7 +158,7 @@
       for (var x=0; x<imageData.width; x++) {
         for (var y=0; y<imageData.height; y++) {
           var dyeAmounts = grid[x][y];
-          var rgba = this.combineDyesIntoRgbaPixel(dyeAmounts);
+          var rgba = this.combineDyesIntoRgbaPixelByColorSpace(dyeAmounts, colorMode);
           var dataCellIndex = 4 * (x + (y * imageData.width));
           for (var i = 0; i < 4; i++) {
             data[dataCellIndex+i] = rgba[i];
