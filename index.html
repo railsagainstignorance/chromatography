@@ -207,12 +207,12 @@
     PaperSpot.prototype = (function () {
       /* private members */
       let _defaultConfigs = {
-        MaxWaterCapacity : 1,
-        WaterAbsorptionRate : 0.1,
+            MaxWaterCapacity : 1,
+         WaterAbsorptionRate : 0.1,
       };
       /* public members */
       return {
-        _defaultConfigs : _defaultConfigs,
+           _defaultConfigs : _defaultConfigs,
                       clone: function(){ return new PaperSpot(this.dyeAmounts, this.waterAmount, this._configs); },
                   stringify: function(){ return JSON.stringify(this); },
                        copy: function(from){
@@ -231,36 +231,44 @@
 
     //------------
 
-    var WaterSpot = function(waterAmount, dyeAmounts){
+    var WaterSpot = function(waterAmount, dyeAmounts, configs={}){
       this.waterAmount = (waterAmount)?         waterAmount : 0;
       this.dyeAmounts  =  (dyeAmounts)? dyeAmounts.slice(0) : DYES.newEmptyDyeAmounts();
+      this._configs = configs;
+      for (c of Object.keys(this._defaultConfigs)) {
+        this[c] = (configs.hasOwnProperty(c))? configs[c] : this._defaultConfigs[c];
+      }
     }
 
     WaterSpot.prototype = (function(){
       /* private members */
+      let _defaultConfigs = {
+        SpreadMinAmountToGoToDryFactor : 1,
+      };
 
       /* public members */
       return {
-             clone: function() { return new WaterSpot(this.waterAmount, this.dyeAmounts); },
-        addDroplet: function(drop){
-           this.waterAmount = this.waterAmount + drop.waterAmount;
-           for (var i = 0; i < this.dyeAmounts.length; i++) {
-             this.dyeAmounts[i] = this.dyeAmounts[i] + drop.dyeAmounts[i];
-           }
-           return this;
-         },
-          divideBy: function(n){
-          this.waterAmount = this.waterAmount/n;
-          for (var i = 0; i < this.dyeAmounts.length; i++) {
-            this.dyeAmounts[i] = this.dyeAmounts[i] / n;
-          }
-          return this;
-        },
-         stringify: function(){ return JSON.stringify(this); },
-              copy: function(from){
-               this.waterAmount = from.waterAmount;
-               DYES.copyAmounts(from.dyeAmounts, this.dyeAmounts);
+        _defaultConfigs : _defaultConfigs,
+                   clone: function() { return new WaterSpot(this.waterAmount, this.dyeAmounts, this._configs); },
+              addDroplet: function(drop){
+                 this.waterAmount = this.waterAmount + drop.waterAmount;
+                 for (var i = 0; i < this.dyeAmounts.length; i++) {
+                   this.dyeAmounts[i] = this.dyeAmounts[i] + drop.dyeAmounts[i];
+                 }
+                 return this;
+               },
+                divideBy: function(n){
+                this.waterAmount = this.waterAmount/n;
+                for (var i = 0; i < this.dyeAmounts.length; i++) {
+                  this.dyeAmounts[i] = this.dyeAmounts[i] / n;
+                }
+                return this;
               },
+               stringify: function(){ return JSON.stringify(this); },
+                    copy: function(from){
+                     this.waterAmount = from.waterAmount;
+                     DYES.copyAmounts(from.dyeAmounts, this.dyeAmounts);
+                    },
       };
     })();
 
@@ -284,10 +292,10 @@
 
     //------------
 
-    var CellSpot = function(paperSpot, waterSpot, paperConfigs={}){
-      this.paperSpot = (paperSpot)? paperSpot.clone() : new PaperSpot(null, 0, paperConfigs);
-      this.waterSpot = (waterSpot)? waterSpot.clone() : new WaterSpot();
-      this.paperConfigs = paperConfigs;
+    var CellSpot = function(paperSpot, waterSpot, spotConfigs={}){
+      this.paperSpot = (paperSpot)? paperSpot.clone() : new PaperSpot(null, 0, spotConfigs);
+      this.waterSpot = (waterSpot)? waterSpot.clone() : new WaterSpot(0, null, spotConfigs);
+      this.spotConfigs = spotConfigs;
     }
 
     CellSpot.prototype = (function(){
@@ -295,7 +303,7 @@
 
       /* public members */
       return {
-              clone: function(){ return new CellSpot(this.paperSpot, this.waterSpot, this.paperConfigs); },
+              clone: function(){ return new CellSpot(this.paperSpot, this.waterSpot, this.spotConfigs); },
          addDroplet: function(drop){ this.waterSpot.addDroplet(drop); },
           stringify: function(){ return JSON.stringify(this); },
                copy: function(from){
@@ -438,7 +446,7 @@
         description : 'max amount of surface water which will evaoprate from the paper',
       },
       SpreadMinAmountToGoToDry : {
-              value : 0.01,
+              value : 1,
               range : [0, CAWorld.ARBITRARY_MAX],
         description : "cell needs this min amount of surface water before spreading to a dry cell"
       },
@@ -493,16 +501,22 @@
         description : 'the sequence of physical processes to run in turn on the grid',
       },
       PaperSpotMaxWaterCapacityRange : {
-              value : [1,1],
+              value : [0.9,1.1],
               range : [0, CAWorld.ARBITRARY_MAX],
                type : 'range',
-        description : "range of possible values for each PaperSpot's max water capacity, chosen at random when each spot is first created",
+        description : "range of possible values for each PaperSpot's max water capacity (chosen at random when each spot is first created)",
       },
       PaperSpotWaterAbsorptionRateRange : {
-              value : [0.1,0.1],
+              value : [0.09,0.11],
               range : [0, CAWorld.ARBITRARY_MAX],
                type : 'range',
-        description : "range of possible values for each PaperSpot's waterAbsorptionRate, chosen at random when each spot is first created",
+        description : "range of possible values for each PaperSpot's waterAbsorptionRate (chosen at random when each spot is first created)",
+      },
+      PaperSpotSpreadMinAmountToGoToDryFactorRange : {
+              value : [0.5,2],
+              range : [0, CAWorld.ARBITRARY_MAX],
+               type : 'range',
+        description : "range of possible values for each PaperSpot's waterSpreadfactor, changing the threshold before water flows from this spot to a dry neighbour, as a factor of the paper default. 0 means no threshold, 1 means the paper default, >1 means more than the paper default (chosen at random when each spot is first created)",
       },
 
     };
@@ -518,7 +532,7 @@
           let value = details.value;
 
           if (config != undefined) {
-            value = config[key]; // assume configs have already been checked 
+            value = config[key]; // assume configs have already been checked
           }
 
           this.config[key] = value; // add to world config map, for documentation
@@ -643,11 +657,11 @@
 
             // return if either nhbr is empty, and the other is not wet enough
             if (thisValueWaterSpot.waterAmount == 0) {
-              if (nhbrValueWaterSpotWaterAmount <= (world.SpreadMinAmountToGoToDry * downhillTipRatio)) {
+              if (nhbrValueWaterSpotWaterAmount <= (nhbrValueWaterSpot.SpreadMinAmountToGoToDryFactor * world.SpreadMinAmountToGoToDry * downhillTipRatio)) {
                 return;
               }
             } else if (nhbrValueWaterSpotWaterAmount == 0) {
-              if (thisValueWaterSpot.waterAmount <= (world.SpreadMinAmountToGoToDry / downhillTipRatio) ) {
+              if (thisValueWaterSpot.waterAmount <= (thisValueWaterSpot.SpreadMinAmountToGoToDryFactor * world.SpreadMinAmountToGoToDry / downhillTipRatio) ) {
                 return;
               }
             }
@@ -835,11 +849,12 @@
     		}
     	}, function (x,y) {
     		//init
-        const paperSpotConfig = {
-             MaxWaterCapacity : randomWithinRange(world.PaperSpotMaxWaterCapacityRange),
-          WaterAbsorptionRate : randomWithinRange(world.PaperSpotWaterAbsorptionRateRange),
+        const spotConfig = {
+                        MaxWaterCapacity : randomWithinRange(world.PaperSpotMaxWaterCapacityRange),
+                     WaterAbsorptionRate : randomWithinRange(world.PaperSpotWaterAbsorptionRateRange),
+          SpreadMinAmountToGoToDryFactor : randomWithinRange(world.PaperSpotSpreadMinAmountToGoToDryFactorRange),
         }
-        this.value = new CellSpot(null, 0, paperSpotConfig);
+        this.value = new CellSpot(null, 0, spotConfig);
         this.prev  = this.value.clone(); // NB, clone so inherits config characteristics
     		this.next  = this.value.clone();
         this.x = x;

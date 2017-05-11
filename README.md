@@ -11,8 +11,9 @@ Add variability into the cells in the paper
 
 ### steps
 
-* paperSpots having different absorbence rates
-* paperSpots having different water repulsion when dry
+* paperSpots having different absorbence rates. DONE
+* waterSpots having different water repulsion when dry. DONE
+* maybe factor in absorbed water in paper
 
 ## The plan - part 4
 
