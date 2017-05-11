@@ -13,6 +13,8 @@ Do colour good. Finally found a clear description of what this colour thing is a
 
 ![explanatory image for cmy mixing](http://dba.med.sc.edu/price/irf/Adobe_tg/models/images/cmyk_example.JPG)
 
+And some code for CMYK --> RGB via http://stackoverflow.com/questions/8869248/use-cmyk-on-web-page
+
 ### steps
 
 * create a CMY spec for each dyes

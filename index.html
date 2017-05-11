@@ -40,18 +40,21 @@
           Rf: 0.2,  // propensity to go with the flow
           Rd: 0.07, // propensity to 'bleed' if no flow
           RGBPattern: [1.0, 0, 0], // how to read it's value from/to RGB triple
+          CMYKPattern: [100, 0, 0, 0],
       },
       {
         name: 'green',
           Rf: 0.3,
           Rd: 0.075,
           RGBPattern: [0, 1.0, 0],
+          CMYKPattern: [0, 100, 0, 0],
       },
       {
         name: 'blue',
           Rf: 0.4,
           Rd: 0.06,
           RGBPattern: [0, 0, 1.0],
+          CMYKPattern: [0, 0, 100, 0],
       },
     ];
 
@@ -122,15 +125,65 @@
       return rgba;
     }
 
-    DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData){
+    DYES.CMYKtoRGB = function (cmyk, a=255){
+      // input array of 4 x 0-100 (CMYK)
+      // output array of 3 x 0-255 (RGB)
+
+        var rgb = new Array(4).fill(0);
+        rgb[3] = a;
+
+        c = cmyk[0] / 100;
+        m = cmyk[1] / 100;
+        y = cmyk[2] / 100;
+        k = cmyk[3] / 100;
+
+        rgb[0] = 1 - Math.min( 1, c * ( 1 - k ) + k );
+        rgb[1] = 1 - Math.min( 1, m * ( 1 - k ) + k );
+        rgb[2] = 1 - Math.min( 1, y * ( 1 - k ) + k );
+
+        rgb[0] = Math.round( rgb[0] * 255 );
+        rgb[1] = Math.round( rgb[1] * 255 );
+        rgb[2] = Math.round( rgb[2] * 255 );
+
+        return rgb;
+    },
+
+    function getMaxOfArray(numArray) {
+      return Math.max.apply(null, numArray);
+    }
+
+    DYES.combineCMYDyesIntoRgbaPixel = function(dyeAmounts) {
+      // return [R, G, B, A]
+      // assume no dyes => full white
+
+      // assume ammount==1 corresponds to 100% of the CMYK colour,
+      // clip at 1,
+
+      const cmykTotals = new Array(4).fill(0);
+
+      for (var d = 0; d < this.length; d++) {
+        for (var i = 0; i < 3; i++) {
+          cmykTotals[i] = cmykTotals[i] + (dyeAmounts[d] * this[d].CMYKPattern[i]);
+        }
+      }
+
+      const cmykScaled = cmykTotals.map(t => { return t / 40; });
+      const cmykClippedToPercentage = cmykScaled.map(t => { return 100 * ((t>1.0)? 1.0 : t); });
+      const rgba= DYES.CMYKtoRGB( cmykClippedToPercentage, 255 );
+      return rgba;
+    }
+
+    DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData, dyeSpace){
       if ((imageData.width !== grid.length) || (imageData.height !== grid[0].length)) {
         throw new Error(`Error: mismatch found between size of grid and imageData`);
       }
+      // const combineDyesToRgbaFn = (dyeSpace == 'cmyk')? this['combineCMYDyesIntoRgbaPixel'] : this['combineDyesIntoRgbaPixel'];
+
       const data = imageData.data;
       for (var x=0; x<imageData.width; x++) {
         for (var y=0; y<imageData.height; y++) {
           var dyeAmounts = grid[x][y];
-          var rgba = this.combineDyesIntoRgbaPixel(dyeAmounts);
+          var rgba = (dyeSpace == 'cmyk')? this.combineCMYDyesIntoRgbaPixel(dyeAmounts) : this.combineDyesIntoRgbaPixel(dyeAmounts);
           var dataCellIndex = 4 * (x + (y * imageData.width));
           for (var i = 0; i < 4; i++) {
             data[dataCellIndex+i] = rgba[i];
@@ -1130,7 +1183,7 @@
         description : 'min/max of r as a proportion of the world.width (with an unbreakable minimum of 2 cells)',
       },
       dropsVRange: {
-              value : [1, 3],
+              value : [0.1, 0.5],
               range : [0, 10*ARBITRARY_MAX],
                type : 'range',
         description : 'min/max of volume as a proportion of world.width',
@@ -1144,6 +1197,11 @@
               value : 'dyeAmounts',
               known : ['dyeAmounts', 'waterAmounts'],
         description : 'which type of source when generating the view',
+      },
+      dyeSpace: {
+              value : 'cmyk',
+              known : ['cmyk', 'rgb'],
+        description : 'which colour space to consider when combining the dyes',
       },
     };
 
@@ -1265,7 +1323,7 @@
             const startDisplayMillis = Date.now();
             if (configs['viewType'] == 'dyeAmounts') {
               let gridOfDyeAmounts = convertWorldGridToGridOfDyeAmounts(world, configs['spotType']);
-              DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData);
+              DYES.writeGridOfDyeAmountsToImageData(gridOfDyeAmounts, imageData, configs['dyeSpace']);
             } else if (configs['viewType'] == 'waterAmounts') {
               writeWorldWaterAmountsToImageData(world, imageData);
             }
