@@ -37,22 +37,22 @@
     const DYES = [
       {
         name: 'red',
-          Rf: 0.2,  // propensity to go with the flow
-          Rd: 0.07, // propensity to 'bleed' if no flow
+          Rf: 0.8,  // propensity to go with the flow
+          Rd: 0.007, // propensity to 'bleed' if no flow
           RGBPattern: [1.0, 0, 0], // how to read it's value from/to RGB triple
           CMYKPattern: [100, 0, 0, 0],
       },
       {
         name: 'green',
-          Rf: 0.3,
-          Rd: 0.075,
+          Rf: 0.85,
+          Rd: 0.0075,
           RGBPattern: [0, 1.0, 0],
           CMYKPattern: [0, 100, 0, 0],
       },
       {
         name: 'blue',
-          Rf: 0.4,
-          Rd: 0.06,
+          Rf: 0.9,
+          Rd: 0.006,
           RGBPattern: [0, 0, 1.0],
           CMYKPattern: [0, 0, 100, 0],
       },
@@ -64,8 +64,11 @@
       let numDirections = 8;
 
       for( let dye of DYES ){
-        if ( (dye.Rf + (numDirections * dye.Rd)) > 1.0 ) {
-          throw new Error(`ERROR: Rf + numDirections*Rd >1.0 for name=${dye.name}, Rf=${dye.Rf}, Rd=${dye.Rd}, numDirections=${numDirections}`);
+        if (dye.Rf > 1 || dye.Rf < 0) {
+          throw new Error(`ERROR: Rf out of bounds: dye: ${JSON.stringify(dye)}`);
+        }
+        if (dye.Rd > 1 || dye.Rd < 0) {
+          throw new Error(`ERROR: Rd out of bounds: dye: ${JSON.stringify(dye)}`);
         }
       }
     }
