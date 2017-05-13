@@ -330,6 +330,7 @@
         var cellSpot = cell.next;
         cellSpot.addDroplet(spot.droplet);
         this.waterDropletsAddedToSurface.addDroplet(spot.droplet);
+        this.SurfaceWaterAmount = this.SurfaceWaterAmount + spot.droplet.waterAmount;
       }
     };
 
@@ -378,12 +379,17 @@
     };
 
     CAWorld.prototype.resetGrid = function() {
-  		var y, x;
+      let surfaceWaterAmount = 0;
+      let grid = this.grid;
+  		let y, x;
   		for (y=0; y<this.height; y++) {
   			for (x=0; x<this.width; x++) {
-  				this.grid[y][x].reset();
+  				grid[y][x].reset();
+          surfaceWaterAmount = surfaceWaterAmount + grid[x][y].value.waterSpot.waterAmount;
   			}
   		}
+
+      this.SurfaceWaterAmount = surfaceWaterAmount;
     }
 
     CAWorld.prototype.addProcessTiming = function(name, timing) {
@@ -397,7 +403,13 @@
     var neighborhood = [null, null, null, null, null, null, null, null];
 
     CAWorld.prototype.stepThroughProcess = function(processName) {
-      {
+      const skipBecauseSurfaceDry = (
+        this.SurfaceWaterAmount <= 0
+        &&
+        this.processesInvolvingOnlySurfaceWater.includes(processName)
+      );
+
+      if(! skipBecauseSurfaceDry){
         const startGridMillis = Date.now();
         this.resetGrid();
         const endGridMillis = Date.now();
@@ -405,25 +417,28 @@
       }
       {
         const startProcessMillis = Date.now();
-    		// bottom up, left to right processing
-    		for (y=this.height-1; y>=0; y--) {
-    			for (x=this.width-1; x>=0; x--) {
-    				this.fillNeighbors(neighborhood, x, y);
-    				var cell = this.grid[y][x];
-    				cell[processName](neighborhood);
+        if (! skipBecauseSurfaceDry) {
+      		// bottom up, left to right processing
+      		for (y=this.height-1; y>=0; y--) {
+      			for (x=this.width-1; x>=0; x--) {
+      				this.fillNeighbors(neighborhood, x, y);
+      				var cell = this.grid[y][x];
+      				cell[processName](neighborhood);
 
-    				// perform any delays
-    				for (var i=0; i<cell.delays.length; i++) {
-    					cell.delays[i].steps--;
-    					if (cell.delays[i].steps <= 0) {
-    						// perform action and remove delay
-    						cell.delays[i].action(cell);
-    						cell.delays.splice(i, 1);
-    						i--;
-    					}
-    				}
-    			}
-    		}
+      				// perform any delays
+      				for (var i=0; i<cell.delays.length; i++) {
+      					cell.delays[i].steps--;
+      					if (cell.delays[i].steps <= 0) {
+      						// perform action and remove delay
+      						cell.delays[i].action(cell);
+      						cell.delays.splice(i, 1);
+      						i--;
+      					}
+      				}
+      			}
+      		}          
+        }
+
         const endProcessMillis = Date.now();
         this.addProcessTiming(processName, endProcessMillis - startProcessMillis);
       }
@@ -563,6 +578,8 @@
 
       // processname -> [timings]
       world.processTimings = {};
+
+      world.processesInvolvingOnlySurfaceWater = ['absorption', 'surfaceFlow'];
 
       world.importConfig( config );
 
