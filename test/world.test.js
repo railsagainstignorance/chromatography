@@ -174,6 +174,83 @@ describe('conservation', () => {
   });
 });
 
+describe('waterSource', () => {
+  it('no-ops when WaterSourceEnabled is false', () => {
+    const world = createSmallWorld(10, { WaterSourceEnabled: false });
+    world.stepThroughProcess('waterSource');
+    const totals = totalWaterAndDyes(world);
+    expect(totals.waterOnSurface).toBe(0);
+    expect(world.waterSourceAddedToSurface.waterAmount).toBe(0);
+  });
+
+  it('adds water to cells in the source band only', () => {
+    const world = createSmallWorld(10, {
+      WaterSourceEnabled: true,
+      WaterSourceYRange: [0, 0.1],
+      WaterSourceAmountPerCell: 1,
+      WaterSourceMaxPerCell: 5,
+    });
+    world.stepThroughProcess('waterSource');
+
+    // Source band: y=0 (floor(0*10) to floor(0.1*10)=1)
+    for (let x = 0; x < world.width; x++) {
+      const sourceCell = world.grid[0][x].getCellNextValue();
+      expect(sourceCell.waterSpot.waterAmount).toBe(1);
+    }
+    // Cells below the band should have no water
+    for (let x = 0; x < world.width; x++) {
+      const belowCell = world.grid[2][x].getCellNextValue();
+      expect(belowCell.waterSpot.waterAmount).toBe(0);
+    }
+  });
+
+  it('does not exceed WaterSourceMaxPerCell', () => {
+    const world = createSmallWorld(10, {
+      WaterSourceEnabled: true,
+      WaterSourceYRange: [0, 0.1],
+      WaterSourceAmountPerCell: 3,
+      WaterSourceMaxPerCell: 5,
+    });
+    // Run multiple times to try to exceed the cap
+    for (let i = 0; i < 5; i++) {
+      world.stepThroughProcess('waterSource');
+    }
+    const cell = world.grid[0][0].getCellNextValue();
+    expect(cell.waterSpot.waterAmount).toBe(5);
+  });
+
+  it('adds no dye to source cells', () => {
+    const world = createSmallWorld(10, {
+      WaterSourceEnabled: true,
+      WaterSourceYRange: [0, 0.1],
+      WaterSourceAmountPerCell: 1,
+      WaterSourceMaxPerCell: 5,
+    });
+    world.stepThroughProcess('waterSource');
+    const cell = world.grid[0][0].getCellNextValue();
+    for (let d = 0; d < DYES.length; d++) {
+      expect(cell.waterSpot.dyeAmounts[d]).toBe(0);
+    }
+  });
+
+  it('tracks added water in waterSourceAddedToSurface', () => {
+    const world = createSmallWorld(10, {
+      WaterSourceEnabled: true,
+      WaterSourceYRange: [0, 0.1],
+      WaterSourceAmountPerCell: 1,
+      WaterSourceMaxPerCell: 5,
+    });
+    world.stepThroughProcess('waterSource');
+
+    // Count how many cells are in the source band
+    let cellsInBand = 0;
+    for (let y = world.waterSourceYMin; y <= world.waterSourceYMax; y++) {
+      cellsInBand += world.width;
+    }
+    expect(world.waterSourceAddedToSurface.waterAmount).toBe(cellsInBand * 1);
+  });
+});
+
 describe('boundary behaviour', () => {
   it('edge cells do not accumulate more dye than interior cells', () => {
     const world = createSmallWorld(7);

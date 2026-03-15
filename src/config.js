@@ -56,9 +56,29 @@ export const WORLD_DEFAULT_CONFIG = {
     range: [0, 1],
     description: 'modify the diffusion flow rate across the whole paper surface'
   },
+  WaterSourceEnabled: {
+    value: false,
+    description: 'master toggle for continuous water source at top edge',
+  },
+  WaterSourceYRange: {
+    value: [0, 0.05],
+    range: [0, 1],
+    type: 'range',
+    description: 'source band position as fraction of height',
+  },
+  WaterSourceAmountPerCell: {
+    value: 0.5,
+    range: [0, ARBITRARY_MAX],
+    description: 'water added per cell per iteration in the source band',
+  },
+  WaterSourceMaxPerCell: {
+    value: 5,
+    range: [0, ARBITRARY_MAX],
+    description: 'cap on water per cell to prevent unbounded accumulation',
+  },
   Processes: {
     value: ['surfaceFlow', 'absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
-    known: ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+    known: ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue', 'waterSource'],
     description: 'the sequence of physical processes to run in turn on the grid',
   },
   PaperSpotMaxWaterCapacityRange: {
@@ -157,6 +177,43 @@ export const DEFAULT_CONFIG = {
     description: 'which colour space to consider when combining the dyes',
   },
 };
+
+export const PRESETS = [
+  {
+    id: 'wet-blobs',
+    label: 'Wet Ink Blobs',
+    description: 'Wet ink drops spread outward from the centre',
+    params: {
+      size: 40,
+    },
+  },
+  {
+    id: 'water-source',
+    label: 'Water Source',
+    description: 'Water flows from top edge through concentrated dye spots',
+    params: {
+      size: 40,
+      WaterSourceEnabled: true,
+      WaterSourceAmountPerCell: 0.01,
+      WaterSourceMaxPerCell: 0.5,
+      Processes: ['waterSource', 'surfaceFlow', 'absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+      dropsNum: 3,
+      dropsXRange: [0.3, 0.7],
+      dropsYRange: [0.12, 0.18],
+      dropsVRange: [0.01, 0.02],
+      dropsDRange: [5000, 10000],
+      dropsRRange: [0.01, 0.02],
+      maxIterations: 2000,
+    },
+  },
+];
+
+export function buildQueryString(params) {
+  return '?' + Object.entries(params).map(([key, value]) => {
+    const encoded = (typeof value === 'object') ? JSON.stringify(value) : String(value);
+    return `${key}=${encodeURIComponent(encoded)}`;
+  }).join('&');
+}
 
 export function parseUrlParams(queryString, worldDefaultConfig = WORLD_DEFAULT_CONFIG, defaultConfig = DEFAULT_CONFIG) {
   const qsMinusQM = queryString.replace(/^\?/, '');

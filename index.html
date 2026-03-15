@@ -25,6 +25,16 @@
     display:none;
   }
 
+  #presets {
+    margin: 10px 0;
+  }
+  #presets button {
+    margin-right: 8px;
+    padding: 6px 14px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
   #configparams form table td {
     border: 1px solid lightgrey;
   }
@@ -42,6 +52,8 @@
 
     <canvas class="blotting-paper" id="myCanvas" width="100" height="100"></canvas>
 
+  <div id="presets"></div>
+
   <div class="remove" id="configparams">
     <h2>Config Params</h2>
 
@@ -56,6 +68,7 @@
   (function(){
     const queryString = location.search;
     const paper = createPaper( document.getElementById('myCanvas'), queryString );
+    Chroma.writePresetsToElement( document.getElementById('presets') );
     if (queryString !== "") {
       const configparamsElt = document.getElementById('configparams');
       configparamsElt.classList.remove('remove');

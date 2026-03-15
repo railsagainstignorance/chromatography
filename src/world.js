@@ -174,12 +174,16 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
   world.waterEvaporationFromPaper = new WaterSpot();
   world.waterEvaporationFromSurface = new WaterSpot();
   world.waterDropletsAddedToSurface = new WaterSpot();
+  world.waterSourceAddedToSurface = new WaterSpot();
 
   world.processTimings = {};
 
   world.processesInvolvingOnlySurfaceWater = ['absorption', 'surfaceFlow'];
 
   world.importConfig(config);
+
+  world.waterSourceYMin = Math.floor(world.WaterSourceYRange[0] * world.height);
+  world.waterSourceYMax = Math.floor(world.WaterSourceYRange[1] * world.height);
 
   world.registerCellType('paper', {
     getCellValue: function() {
@@ -417,6 +421,21 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
         thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - evapAmount;
         world.waterEvaporationFromPaper.waterAmount = world.waterEvaporationFromPaper.waterAmount + evapAmount;
       }
+
+      return true;
+    },
+    waterSource: function(_neighbors) {
+      if (!world.WaterSourceEnabled) { return true; }
+      if (this.y < world.waterSourceYMin || this.y > world.waterSourceYMax) { return true; }
+
+      const thisNextWaterSpot = this.next.waterSpot;
+      const headroom = world.WaterSourceMaxPerCell - thisNextWaterSpot.waterAmount;
+      if (headroom <= 0) { return true; }
+
+      const addAmount = Math.min(world.WaterSourceAmountPerCell, headroom);
+      thisNextWaterSpot.waterAmount = thisNextWaterSpot.waterAmount + addAmount;
+      world.waterSourceAddedToSurface.waterAmount = world.waterSourceAddedToSurface.waterAmount + addAmount;
+      world.SurfaceWaterAmount = world.SurfaceWaterAmount + addAmount;
 
       return true;
     },

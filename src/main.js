@@ -1,5 +1,5 @@
 import { DYES } from './dyes.js';
-import { parseUrlParams } from './config.js';
+import { parseUrlParams, PRESETS, buildQueryString } from './config.js';
 import { setupCAWorldExtensions, createWorldOfBlottingPaperAndDyes } from './world.js';
 import { displayWorld } from './rendering.js';
 import { randomWithinRange } from './utils.js';
@@ -45,7 +45,7 @@ function calcDyeAndWaterTotalsInWorld(world) {
     world.paperSpotLost.waterAmount,
     world.waterEvaporationFromPaper.waterAmount,
     world.waterEvaporationFromSurface.waterAmount
-  ].reduce((prev, curr) => prev + curr) - world.waterDropletsAddedToSurface.waterAmount;
+  ].reduce((prev, curr) => prev + curr) - world.waterDropletsAddedToSurface.waterAmount - world.waterSourceAddedToSurface.waterAmount;
 
   return {
     waterAmountTotal: waterAmountTotal,
@@ -56,6 +56,7 @@ function calcDyeAndWaterTotalsInWorld(world) {
     waterAmountEvaporationFromPaper: world.waterEvaporationFromPaper.waterAmount,
     waterAmountEvaporationFromSurface: world.waterEvaporationFromSurface.waterAmount,
     waterDropletsAddedToSurface: world.waterDropletsAddedToSurface.waterAmount,
+    waterSourceAddedToSurface: world.waterSourceAddedToSurface.waterAmount,
     dyeAmountTotal: dyeAmountTotal,
     dyeAmountsTotal: dyeAmountsTotal,
     dyeAmountsInPaper: dyeAmountsInPaper,
@@ -279,5 +280,17 @@ export function createPaper(canvas, queryString) {
   };
 }
 
+function writePresetsToElement(containerElt) {
+  for (const preset of PRESETS) {
+    const btn = document.createElement('button');
+    btn.textContent = preset.label;
+    btn.title = preset.description;
+    btn.addEventListener('click', () => {
+      window.location.search = buildQueryString(preset.params);
+    });
+    containerElt.appendChild(btn);
+  }
+}
+
 // Expose globally for the inline script in index.html
-window.Chroma = { createPaper };
+window.Chroma = { createPaper, writePresetsToElement };
