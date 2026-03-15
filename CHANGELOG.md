@@ -4,6 +4,11 @@ All notable changes to the chromatography simulation.
 
 ## [Unreleased]
 
+### Developer experience
+
+- Add `.env` for port configuration (`PORT=8000`, `PORT_TEST=8001`), gitignored with `.env.example` checked in
+- Add `npm start` and `npm run start:test` scripts that read ports from `.env`
+
 ### Model veracity improvements
 
 - **Absorbing boundaries** — capillaryFlow and diffusion now allow water/dye to flow out at grid edges (tracked via `world.paperSpotLost`), eliminating the thick rim artefact caused by asymmetric boundary conditions
