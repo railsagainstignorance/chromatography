@@ -2,12 +2,12 @@ const ARBITRARY_MAX = 1000;
 
 export const WORLD_DEFAULT_CONFIG = {
   EvaporationFromPaperRate: {
-    value: 0.001,
+    value: 0.0001,
     range: [0, ARBITRARY_MAX],
     description: 'max amount of absorbed water which will evaporate from the paper',
   },
   EvaporationFromSurfaceRate: {
-    value: 0.0005,
+    value: 0.00005,
     range: [0, ARBITRARY_MAX],
     description: 'max amount of surface water which will evaoprate from the paper',
   },
@@ -88,7 +88,7 @@ export const DEFAULT_CONFIG = {
     description: 'dimensions of square canvas & grid',
   },
   maxIterations: {
-    value: 2000,
+    value: 1000,
     range: [0, 10 * ARBITRARY_MAX],
     description: 'upper limit for iteration, assuming there is still water in or on the paper',
   },
@@ -152,7 +152,7 @@ export const DEFAULT_CONFIG = {
     description: 'which type of source when generating the view',
   },
   dyeSpace: {
-    value: 'cmyk',
+    value: 'rgb',
     known: ['cmyk', 'rgb'],
     description: 'which colour space to consider when combining the dyes',
   },

@@ -5,8 +5,8 @@ describe('parseUrlParams', () => {
   it('returns default values for empty query string', () => {
     const configs = parseUrlParams('');
     expect(configs.size).toBe(100);
-    expect(configs.maxIterations).toBe(2000);
-    expect(configs.dyeSpace).toBe('cmyk');
+    expect(configs.maxIterations).toBe(1000);
+    expect(configs.dyeSpace).toBe('rgb');
   });
 
   it('parses numeric parameters', () => {
@@ -21,7 +21,7 @@ describe('parseUrlParams', () => {
 
   it('rejects unknown string values', () => {
     const configs = parseUrlParams('?dyeSpace=hsl');
-    expect(configs.dyeSpace).toBe('cmyk'); // falls back to default
+    expect(configs.dyeSpace).toBe('rgb'); // falls back to default
   });
 
   it('parses boolean parameters', () => {

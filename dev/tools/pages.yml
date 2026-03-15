@@ -22,10 +22,6 @@ pages:
     description: Large grid (100x100, default)
     timeout: 120000
 
-  rgb:
-    path: /?size=40&dyeSpace=rgb
-    description: RGB color space rendering
-
   cmyk:
     path: /?size=40&dyeSpace=cmyk
     description: CMYK color space rendering

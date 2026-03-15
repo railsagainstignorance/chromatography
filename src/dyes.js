@@ -3,14 +3,14 @@ import { RGB_BYTE_MAX, RGB_CHANNELS, RGBA_CHANNELS, RGBA_BYTES_PER_PIXEL, CMYK_P
 export const DYES = [
   {
     name: 'red',
-      Rf: 0.8,
+      Rf: 0.4,
       Rd: 0.007,
       RGBPattern: [1.0, 0, 0],
       CMYKPattern: [100, 0, 0, 0],
   },
   {
     name: 'green',
-      Rf: 0.85,
+      Rf: 0.65,
       Rd: 0.0075,
       RGBPattern: [0, 1.0, 0],
       CMYKPattern: [0, 100, 0, 0],
