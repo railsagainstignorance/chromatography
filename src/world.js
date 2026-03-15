@@ -338,7 +338,7 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
           thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterFlowAmount;
           let waterFlowProportion = waterFlowAmount / nhbrValuePaperSpot.waterAmount;
           for (var d = 0; d < DYES.length; d++) {
-            let dyeFlowAmount = waterFlowProportion * nhbrValuePaperSpot.dyeAmounts[d];
+            let dyeFlowAmount = waterFlowProportion * (1 - DYES[d].Rf) * nhbrValuePaperSpot.dyeAmounts[d];
             thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + dyeFlowAmount;
           }
         } else if (deltaWaterAmountScaled > 0) {
@@ -349,7 +349,7 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
             let waterFlowProportion = waterFlowAmount / thisValuePaperSpot.waterAmount;
             world.paperSpotLost.waterAmount = world.paperSpotLost.waterAmount + waterFlowAmount;
             for (var d = 0; d < DYES.length; d++) {
-              let dyeFlowAmount = waterFlowProportion * thisValuePaperSpot.dyeAmounts[d];
+              let dyeFlowAmount = waterFlowProportion * (1 - DYES[d].Rf) * thisValuePaperSpot.dyeAmounts[d];
               thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] - dyeFlowAmount;
               world.paperSpotLost.dyeAmounts[d] = world.paperSpotLost.dyeAmounts[d] + dyeFlowAmount;
             }
@@ -360,7 +360,7 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
               thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - waterFlowAmount;
               let waterFlowProportion = waterFlowAmount / thisValuePaperSpot.waterAmount;
               for (var d = 0; d < DYES.length; d++) {
-                let dyeFlowAmount = waterFlowProportion * thisValuePaperSpot.dyeAmounts[d];
+                let dyeFlowAmount = waterFlowProportion * (1 - DYES[d].Rf) * thisValuePaperSpot.dyeAmounts[d];
                 thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] - dyeFlowAmount;
               }
             }

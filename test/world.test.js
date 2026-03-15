@@ -252,21 +252,21 @@ describe('waterSource', () => {
 });
 
 describe('capillaryFlow', () => {
-  it('moves dye proportionally with water (no Rf bias)', () => {
+  it('moves low-Rf dye more than high-Rf dye (mobility = 1-Rf)', () => {
     const world = createSmallWorld(5);
     // Place equal red and blue dye directly into paper of the centre cell
     const centreCell = world.grid[2][2].getCellNextValue();
     centreCell.paperSpot.waterAmount = 0.5;
-    centreCell.paperSpot.dyeAmounts[0] = 10; // red (Rf=0.4)
-    centreCell.paperSpot.dyeAmounts[2] = 10; // blue (Rf=0.9)
+    centreCell.paperSpot.dyeAmounts[0] = 10; // red (Rf=0.4, mobility=0.6)
+    centreCell.paperSpot.dyeAmounts[2] = 10; // blue (Rf=0.9, mobility=0.1)
 
     world.stepThroughProcess('capillaryFlow');
 
     const afterCell = world.grid[2][2].getCellNextValue();
-    // Both dyes should lose the same proportion since Rf is no longer applied
+    // Red (lower Rf, higher mobility) should lose more dye than blue (higher Rf, stickier)
     const redRemaining = afterCell.paperSpot.dyeAmounts[0];
     const blueRemaining = afterCell.paperSpot.dyeAmounts[2];
-    expect(redRemaining).toBeCloseTo(blueRemaining, 10);
+    expect(redRemaining).toBeLessThan(blueRemaining);
   });
 });
 
