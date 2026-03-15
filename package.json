@@ -1,0 +1,27 @@
+{
+  "name": "chromatography",
+  "version": "1.0.0",
+  "description": "experimenting with modelling the physics of chromatography in-browser",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/railsagainstignorance/chromatography.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/railsagainstignorance/chromatography/issues"
+  },
+  "homepage": "https://github.com/railsagainstignorance/chromatography#readme",
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "vitest": "^3.2.4"
+  }
+}
