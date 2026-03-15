@@ -2,7 +2,7 @@ const ARBITRARY_MAX = 1000;
 
 export const WORLD_DEFAULT_CONFIG = {
   EvaporationFromPaperRate: {
-    value: 0.0001,
+    value: 0.0005,
     range: [0, ARBITRARY_MAX],
     description: 'max amount of absorbed water which will evaporate from the paper',
   },
@@ -17,7 +17,7 @@ export const WORLD_DEFAULT_CONFIG = {
     description: "cell needs this min amount of surface water before spreading to a dry cell"
   },
   DownhillTipRatio: {
-    value: 3,
+    value: 5,
     range: [1, ARBITRARY_MAX],
     description: "if there's a slope, the downhill SpreadMinAmountToGoToDry is multiplied by this factor"
   },
@@ -47,12 +47,12 @@ export const WORLD_DEFAULT_CONFIG = {
     description: 'modify the capillary flow rate across the whole paper'
   },
   PaperDiffusionFactor: {
-    value: 0.5,
+    value: 0.15,
     range: [0, 1],
     description: 'modify the diffusion flow rate across the whole paper'
   },
   WaterDiffusionFactor: {
-    value: 0.5,
+    value: 0.15,
     range: [0, 1],
     description: 'modify the diffusion flow rate across the whole paper surface'
   },
@@ -83,7 +83,7 @@ export const WORLD_DEFAULT_CONFIG = {
 
 export const DEFAULT_CONFIG = {
   size: {
-    value: 20,
+    value: 100,
     range: [1, ARBITRARY_MAX],
     description: 'dimensions of square canvas & grid',
   },
@@ -107,36 +107,36 @@ export const DEFAULT_CONFIG = {
     description: 'to record the canvas animation as a webm file',
   },
   dropsNum: {
-    value: 1,
+    value: 5,
     range: [0, ARBITRARY_MAX],
     description: 'how many initial drops',
   },
   dropsXRange: {
-    value: [0.5, 0.5],
+    value: [0.3, 0.7],
     range: [0, 2],
     type: 'range',
     description: 'min/max of x as a proportion of world.width',
   },
   dropsYRange: {
-    value: [0.5, 0.5],
+    value: [0.2, 0.5],
     range: [0, 2],
     type: 'range',
     description: 'min/max of y as a proportion of world.width',
   },
   dropsRRange: {
-    value: [0.1, 0.1],
+    value: [0.02, 0.05],
     range: [0, 2],
     type: 'range',
     description: 'min/max of r as a proportion of the world.width (with an unbreakable minimum of 2 cells)',
   },
   dropsVRange: {
-    value: [20, 20],
+    value: [10, 30],
     range: [0, 10 * ARBITRARY_MAX],
     type: 'range',
     description: 'min/max of total droplet volume (divided among cells in the drop circle)',
   },
   dropsDRange: {
-    value: [0.5, 0.5],
+    value: [5, 10],
     range: [0, 10 * ARBITRARY_MAX],
     type: 'range',
     description: 'min/max of dilution of dyes in water in droplet. 0 means no dye in water, 1 means same amount of dye as water, > 1 means more dye than water.',

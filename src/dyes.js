@@ -1,4 +1,4 @@
-import { RGB_BYTE_MAX, RGB_CHANNELS, RGBA_CHANNELS, RGBA_BYTES_PER_PIXEL, CMYK_PERCENTAGE_MAX, FULL_OPACITY, WHITE_RGBA } from './constants.js';
+import { RGB_BYTE_MAX, RGB_CHANNELS, RGBA_CHANNELS, RGBA_BYTES_PER_PIXEL, CMYK_PERCENTAGE_MAX, FULL_OPACITY, WHITE_RGBA, RENDERING_GAMMA } from './constants.js';
 
 export const DYES = [
   {
@@ -71,6 +71,9 @@ DYES.combineDyesIntoRgbaPixel = function(dyeAmounts, globalMax) {
     }
   }
 
+  // Gamma correction: boost mid-tone concentrations toward full saturation
+  rgba01 = rgba01.map(c => Math.pow(c, RENDERING_GAMMA));
+
   var maxRGB01 = Math.max.apply(null, rgba01);
   if (maxRGB01 > 1.0) {
     rgba01 = rgba01.map(c => { return c / maxRGB01; });
@@ -115,7 +118,9 @@ DYES.combineCMYDyesIntoRgbaPixel = function(dyeAmounts, globalMax) {
   }
 
   const cmykScaled = cmykTotals.map(t => { return t / globalMax; });
-  const cmykClippedToPercentage = cmykScaled.map(t => { return CMYK_PERCENTAGE_MAX * ((t > 1.0) ? 1.0 : t); });
+  // Gamma correction: boost mid-tone concentrations toward full saturation
+  const cmykGamma = cmykScaled.map(c => Math.pow(c, RENDERING_GAMMA));
+  const cmykClippedToPercentage = cmykGamma.map(t => { return CMYK_PERCENTAGE_MAX * ((t > 1.0) ? 1.0 : t); });
   const rgba = DYES.CMYKtoRGB(cmykClippedToPercentage, FULL_OPACITY);
   return rgba;
 };

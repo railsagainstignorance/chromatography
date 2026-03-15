@@ -4,7 +4,7 @@ import { parseUrlParams, DEFAULT_CONFIG, WORLD_DEFAULT_CONFIG } from '../src/con
 describe('parseUrlParams', () => {
   it('returns default values for empty query string', () => {
     const configs = parseUrlParams('');
-    expect(configs.size).toBe(20);
+    expect(configs.size).toBe(100);
     expect(configs.maxIterations).toBe(1000);
     expect(configs.dyeSpace).toBe('rgb');
   });
@@ -36,7 +36,7 @@ describe('parseUrlParams', () => {
 
   it('rejects out-of-range numeric values', () => {
     const configs = parseUrlParams('?size=5000');
-    expect(configs.size).toBe(20); // falls back to default (max is 1000)
+    expect(configs.size).toBe(100); // falls back to default (max is 1000)
   });
 
   it('parses json parameter', () => {

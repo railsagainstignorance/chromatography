@@ -112,12 +112,12 @@ describe('DYES.combineDyesIntoRgbaPixel', () => {
     expect(rgba[3]).toBe(255); // alpha always full
   });
 
-  it('returns light pink for red dye at half globalMax', () => {
+  it('returns saturated pink for red dye at half globalMax (gamma-boosted)', () => {
     const rgba = DYES.combineDyesIntoRgbaPixel([0.5, 0, 0], 1);
-    // white→color: R=255, G=floor((1-0.5)*255)=127, B=127
+    // After gamma (0.45): 0.5^0.45 ≈ 0.73, white-lerp: G=B=floor((1-0.73)*255)=68
     expect(rgba[0]).toBe(255);
-    expect(rgba[1]).toBe(127);
-    expect(rgba[2]).toBe(127);
+    expect(rgba[1]).toBe(68);
+    expect(rgba[2]).toBe(68);
     expect(rgba[3]).toBe(255);
   });
 
