@@ -83,7 +83,7 @@ export const WORLD_DEFAULT_CONFIG = {
 
 export const DEFAULT_CONFIG = {
   size: {
-    value: 100,
+    value: 20,
     range: [1, ARBITRARY_MAX],
     description: 'dimensions of square canvas & grid',
   },
@@ -107,36 +107,36 @@ export const DEFAULT_CONFIG = {
     description: 'to record the canvas animation as a webm file',
   },
   dropsNum: {
-    value: 10,
+    value: 1,
     range: [0, ARBITRARY_MAX],
     description: 'how many initial drops',
   },
   dropsXRange: {
-    value: [0.3, 0.7],
+    value: [0.5, 0.5],
     range: [0, 2],
     type: 'range',
     description: 'min/max of x as a proportion of world.width',
   },
   dropsYRange: {
-    value: [0.2, 0.6],
+    value: [0.5, 0.5],
     range: [0, 2],
     type: 'range',
     description: 'min/max of y as a proportion of world.width',
   },
   dropsRRange: {
-    value: [0.01, 0.05],
+    value: [0.1, 0.1],
     range: [0, 2],
     type: 'range',
     description: 'min/max of r as a proportion of the world.width (with an unbreakable minimum of 2 cells)',
   },
   dropsVRange: {
-    value: [10, 500],
+    value: [20, 20],
     range: [0, 10 * ARBITRARY_MAX],
     type: 'range',
     description: 'min/max of total droplet volume (divided among cells in the drop circle)',
   },
   dropsDRange: {
-    value: [0.75, 0.75],
+    value: [0.5, 0.5],
     range: [0, 10 * ARBITRARY_MAX],
     type: 'range',
     description: 'min/max of dilution of dyes in water in droplet. 0 means no dye in water, 1 means same amount of dye as water, > 1 means more dye than water.',
