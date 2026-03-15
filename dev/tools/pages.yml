@@ -1,0 +1,31 @@
+# Page Registry for Screenshot Tool
+# Usage: npm run screenshot -- <page_key>
+# Or:    npm run screenshot -- --all
+
+defaults:
+  width: 800
+  height: 800
+  timeout: 60000   # ms to wait for simulation completion
+
+pages:
+  default:
+    path: /?size=40
+    description: Default simulation (40x40 grid, default config)
+
+  small:
+    path: /?size=20
+    description: Small grid for quick runs
+    timeout: 30000
+
+  large:
+    path: /?size=100
+    description: Large grid (100x100, default)
+    timeout: 120000
+
+  rgb:
+    path: /?size=40&dyeSpace=rgb
+    description: RGB color space rendering
+
+  cmyk:
+    path: /?size=40&dyeSpace=cmyk
+    description: CMYK color space rendering
