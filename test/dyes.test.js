@@ -95,36 +95,63 @@ describe('DYES.CMYKtoRGB', () => {
 
 describe('DYES.combineDyesIntoRgbaPixel', () => {
   it('returns white for zero dye amounts', () => {
-    const rgba = DYES.combineDyesIntoRgbaPixel([0, 0, 0]);
+    const rgba = DYES.combineDyesIntoRgbaPixel([0, 0, 0], 1);
     expect(rgba).toEqual([255, 255, 255, 255]);
   });
 
-  it('returns pure red for red-only dye at amount 1', () => {
-    const rgba = DYES.combineDyesIntoRgbaPixel([1, 0, 0]);
+  it('returns white when globalMax is zero', () => {
+    const rgba = DYES.combineDyesIntoRgbaPixel([1, 0, 0], 0);
+    expect(rgba).toEqual([255, 255, 255, 255]);
+  });
+
+  it('returns pure red for red-only dye at globalMax', () => {
+    const rgba = DYES.combineDyesIntoRgbaPixel([1, 0, 0], 1);
     expect(rgba[0]).toBe(255); // R
     expect(rgba[1]).toBe(0);   // G
     expect(rgba[2]).toBe(0);   // B
+    expect(rgba[3]).toBe(255); // alpha always full
   });
 
-  it('normalises when amounts exceed 1.0', () => {
-    const rgba = DYES.combineDyesIntoRgbaPixel([2, 0, 0]);
-    // maxRGB01 would be 2, clamped to 1.0 then alpha set to 1.0
+  it('returns light pink for red dye at half globalMax', () => {
+    const rgba = DYES.combineDyesIntoRgbaPixel([0.5, 0, 0], 1);
+    // white→color: R=255, G=floor((1-0.5)*255)=127, B=127
     expect(rgba[0]).toBe(255);
-    expect(rgba[3]).toBe(255); // alpha
+    expect(rgba[1]).toBe(127);
+    expect(rgba[2]).toBe(127);
+    expect(rgba[3]).toBe(255);
+  });
+
+  it('scales dye amounts relative to globalMax', () => {
+    const rgba1 = DYES.combineDyesIntoRgbaPixel([10, 0, 0], 10);
+    const rgba2 = DYES.combineDyesIntoRgbaPixel([1, 0, 0], 1);
+    // Both should produce the same result (dye at globalMax)
+    expect(rgba1).toEqual(rgba2);
   });
 });
 
 describe('DYES.combineCMYDyesIntoRgbaPixel', () => {
   it('returns white for zero dye amounts', () => {
-    const rgba = DYES.combineCMYDyesIntoRgbaPixel([0, 0, 0]);
+    const rgba = DYES.combineCMYDyesIntoRgbaPixel([0, 0, 0], 1);
     expect(rgba).toEqual([255, 255, 255, 255]);
   });
 
-  it('returns a non-white color for non-zero dyes', () => {
-    const rgba = DYES.combineCMYDyesIntoRgbaPixel([40, 0, 0]);
-    // 40 * 100 / 40 = 100, clipped to 100% cyan => [0, 255, 255, 255]
+  it('returns white when globalMax is zero', () => {
+    const rgba = DYES.combineCMYDyesIntoRgbaPixel([1, 0, 0], 0);
+    expect(rgba).toEqual([255, 255, 255, 255]);
+  });
+
+  it('returns cyan for red dye at globalMax', () => {
+    // Red dye has CMYKPattern [100, 0, 0, 0] (cyan ink)
+    // At globalMax: cmykTotals=[100*globalMax], scaled by /globalMax → [100,0,0,0] → 100% cyan
+    const rgba = DYES.combineCMYDyesIntoRgbaPixel([5, 0, 0], 5);
     expect(rgba[0]).toBe(0);
     expect(rgba[1]).toBe(255);
     expect(rgba[2]).toBe(255);
+  });
+
+  it('scales relative to globalMax', () => {
+    const rgba1 = DYES.combineCMYDyesIntoRgbaPixel([10, 0, 0], 10);
+    const rgba2 = DYES.combineCMYDyesIntoRgbaPixel([5, 0, 0], 5);
+    expect(rgba1).toEqual(rgba2);
   });
 });

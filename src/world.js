@@ -45,6 +45,12 @@ export function setupCAWorldExtensions() {
 
     const droplet = WaterSpot.createBigRandomDrop(v, d);
 
+    const numCells = spotsWithCoords.length;
+    droplet.waterAmount /= numCells;
+    for (let i = 0; i < droplet.dyeAmounts.length; i++) {
+      droplet.dyeAmounts[i] /= numCells;
+    }
+
     spotsWithCoords.forEach(swc => {
       swc.droplet = droplet.clone();
     });
@@ -155,7 +161,13 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
   });
 
   world.directions = [world.LEFT, world.RIGHT, world.BOTTOM, world.TOP, world.TOPLEFT, world.TOPRIGHT, world.BOTTOMLEFT, world.BOTTOMRIGHT];
+  for (const dir of world.directions) {
+    dir.distance = Math.sqrt(dir.x * dir.x + dir.y * dir.y);
+    dir.weight = 1 / dir.distance;
+  }
+  world.fullTotalWeight = world.directions.reduce((sum, dir) => sum + dir.weight, 0);
   world.waterSpotLost = new WaterSpot();
+  world.paperSpotLost = new WaterSpot();
   world.waterEvaporationFromPaper = new WaterSpot();
   world.waterEvaporationFromSurface = new WaterSpot();
   world.waterDropletsAddedToSurface = new WaterSpot();
@@ -243,7 +255,7 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
         const nhbrWaterDelta = nhbrTargetAmount - nhbrValueWaterSpotWaterAmount;
 
         const scaleForFlowToWetOrDry = (thisValueWaterSpot.waterAmount > 0 && nhbrValueWaterSpotWaterAmount > 0) ? world.ScaleForFlowToWet : world.ScaleForFlowToDry;
-        const waterAmountFlowing = nhbrWaterDelta * scaleForFlowToWetOrDry / 8;
+        const waterAmountFlowing = nhbrWaterDelta * scaleForFlowToWetOrDry * direction.weight / world.fullTotalWeight;
 
         if (waterAmountFlowing == 0) {
           return;
@@ -288,11 +300,11 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
       const remainingPaperWaterCapacity = thisValuePaperSpot.MaxWaterCapacity - thisValuePaperSpot.waterAmount;
       for (var direction of world.directions) {
         let nhbr = neighbors[direction.index];
-        if (!nhbr) { continue; }
-        let nhbrValuePaperSpot = nhbr.value.paperSpot;
-        let deltaWaterAmount = (thisValuePaperSpot.waterAmount - nhbrValuePaperSpot.waterAmount);
-        let deltaWaterAmountScaled = deltaWaterAmount / (2 * 8);
-        if (remainingPaperWaterCapacity > 0 && deltaWaterAmountScaled < 0) {
+        let nhbrValuePaperSpot = nhbr ? nhbr.value.paperSpot : null;
+        let nhbrWaterAmount = nhbrValuePaperSpot ? nhbrValuePaperSpot.waterAmount : 0;
+        let deltaWaterAmount = (thisValuePaperSpot.waterAmount - nhbrWaterAmount);
+        let deltaWaterAmountScaled = deltaWaterAmount * direction.weight / (2 * world.fullTotalWeight);
+        if (remainingPaperWaterCapacity > 0 && deltaWaterAmountScaled < 0 && nhbrValuePaperSpot) {
           let waterFlowAmount = Math.min((-deltaWaterAmountScaled), remainingPaperWaterCapacity) * world.PaperCapillaryFactor;
           thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterFlowAmount;
           let waterFlowProportion = waterFlowAmount / nhbrValuePaperSpot.waterAmount;
@@ -301,14 +313,27 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
             thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] + dyeFlowAmount;
           }
         } else if (deltaWaterAmountScaled > 0) {
-          let nhbrRemainingPaperWaterCapacity = nhbrValuePaperSpot.MaxWaterCapacity - nhbrValuePaperSpot.waterAmount;
-          if (nhbrRemainingPaperWaterCapacity > 0) {
-            let waterFlowAmount = Math.min(deltaWaterAmountScaled, nhbrRemainingPaperWaterCapacity) * world.PaperCapillaryFactor;
+          if (!nhbr) {
+            // Absorbing boundary: water and dyes flow out of the grid
+            let waterFlowAmount = deltaWaterAmountScaled * world.PaperCapillaryFactor;
             thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - waterFlowAmount;
             let waterFlowProportion = waterFlowAmount / thisValuePaperSpot.waterAmount;
+            world.paperSpotLost.waterAmount = world.paperSpotLost.waterAmount + waterFlowAmount;
             for (var d = 0; d < DYES.length; d++) {
               let dyeFlowAmount = waterFlowProportion * DYES[d].Rf * thisValuePaperSpot.dyeAmounts[d];
               thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] - dyeFlowAmount;
+              world.paperSpotLost.dyeAmounts[d] = world.paperSpotLost.dyeAmounts[d] + dyeFlowAmount;
+            }
+          } else {
+            let nhbrRemainingPaperWaterCapacity = nhbrValuePaperSpot.MaxWaterCapacity - nhbrValuePaperSpot.waterAmount;
+            if (nhbrRemainingPaperWaterCapacity > 0) {
+              let waterFlowAmount = Math.min(deltaWaterAmountScaled, nhbrRemainingPaperWaterCapacity) * world.PaperCapillaryFactor;
+              thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount - waterFlowAmount;
+              let waterFlowProportion = waterFlowAmount / thisValuePaperSpot.waterAmount;
+              for (var d = 0; d < DYES.length; d++) {
+                let dyeFlowAmount = waterFlowProportion * DYES[d].Rf * thisValuePaperSpot.dyeAmounts[d];
+                thisNextPaperSpot.dyeAmounts[d] = thisNextPaperSpot.dyeAmounts[d] - dyeFlowAmount;
+              }
             }
           }
         }
@@ -333,7 +358,19 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
         if (thisValueSpot.waterAmount > 0) {
           for (var direction of world.directions) {
             let nhbr = neighbors[direction.index];
-            if (!nhbr) { continue; }
+            if (!nhbr) {
+              // Absorbing boundary: dye diffuses out at edges (concentration beyond grid is 0)
+              for (var d = 0; d < DYES.length; d++) {
+                let thisValueConcentration = thisValueSpot.dyeAmounts[d] / thisValueSpot.waterAmount;
+                if (thisValueConcentration > 0) {
+                  let dyeFlowAmount = diffusionFactor * DYES[d].Rd * thisValueSpot.dyeAmounts[d] * direction.weight / world.fullTotalWeight;
+                  thisNextSpot.dyeAmounts[d] = thisNextSpot.dyeAmounts[d] - dyeFlowAmount;
+                  const lostTracker = (spotType === 'paperSpot') ? world.paperSpotLost : world.waterSpotLost;
+                  lostTracker.dyeAmounts[d] = lostTracker.dyeAmounts[d] + dyeFlowAmount;
+                }
+              }
+              continue;
+            }
             let nhbrValueSpot = nhbr.value[spotType];
             if (nhbrValueSpot.waterAmount <= 0) { continue; }
 
@@ -342,10 +379,10 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
               let nhbrValueConcentration = nhbrValueSpot.dyeAmounts[d] / nhbrValueSpot.waterAmount;
               let deltaConcentration = nhbrValueConcentration - thisValueConcentration;
               if (deltaConcentration > 0) {
-                let dyeFlowAmount = diffusionFactor * DYES[d].Rd * (deltaConcentration / nhbrValueConcentration) * nhbrValueSpot.dyeAmounts[d] / 8;
+                let dyeFlowAmount = diffusionFactor * DYES[d].Rd * (deltaConcentration / nhbrValueConcentration) * nhbrValueSpot.dyeAmounts[d] * direction.weight / world.fullTotalWeight;
                 thisNextSpot.dyeAmounts[d] = thisNextSpot.dyeAmounts[d] + dyeFlowAmount;
               } else if (deltaConcentration < 0) {
-                let dyeFlowAmount = diffusionFactor * DYES[d].Rd * (deltaConcentration / thisValueConcentration) * thisValueSpot.dyeAmounts[d] / 8;
+                let dyeFlowAmount = diffusionFactor * DYES[d].Rd * (deltaConcentration / thisValueConcentration) * thisValueSpot.dyeAmounts[d] * direction.weight / world.fullTotalWeight;
                 thisNextSpot.dyeAmounts[d] = thisNextSpot.dyeAmounts[d] + dyeFlowAmount;
               }
             }

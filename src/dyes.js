@@ -61,12 +61,13 @@ DYES.subtractAmounts = function(from, to) {
   }
 };
 
-DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
-  var rgba01 = new Array(3).fill(0);
+DYES.combineDyesIntoRgbaPixel = function(dyeAmounts, globalMax) {
+  if (!globalMax || globalMax <= 0) { return [255, 255, 255, 255]; }
 
+  var rgba01 = new Array(3).fill(0);
   for (var d = 0; d < this.length; d++) {
     for (var i = 0; i < 3; i++) {
-      rgba01[i] = rgba01[i] + (dyeAmounts[d] * this[d].RGBPattern[i]);
+      rgba01[i] += (dyeAmounts[d] / globalMax) * this[d].RGBPattern[i];
     }
   }
 
@@ -75,12 +76,11 @@ DYES.combineDyesIntoRgbaPixel = function(dyeAmounts) {
     rgba01 = rgba01.map(c => { return c / maxRGB01; });
     maxRGB01 = 1.0;
   }
-  rgba01.push(maxRGB01);
-  if (maxRGB01 == 0) {
-    rgba01.fill(1.0);
-  }
+  if (maxRGB01 == 0) { return [255, 255, 255, 255]; }
 
-  var rgba = rgba01.map(c => { return (c > 1.0) ? 255 : Math.floor(c * 255); });
+  // White→color: lerp from white based on intensity
+  var rgba = rgba01.map(c => { return Math.floor((1.0 - maxRGB01 + c) * 255); });
+  rgba.push(255);
   return rgba;
 };
 
@@ -104,16 +104,17 @@ DYES.CMYKtoRGB = function(cmyk, a = 255) {
   return rgb;
 };
 
-DYES.combineCMYDyesIntoRgbaPixel = function(dyeAmounts) {
-  const cmykTotals = new Array(4).fill(0);
+DYES.combineCMYDyesIntoRgbaPixel = function(dyeAmounts, globalMax) {
+  if (!globalMax || globalMax <= 0) { return [255, 255, 255, 255]; }
 
+  const cmykTotals = new Array(4).fill(0);
   for (var d = 0; d < this.length; d++) {
     for (var i = 0; i < 3; i++) {
       cmykTotals[i] = cmykTotals[i] + (dyeAmounts[d] * this[d].CMYKPattern[i]);
     }
   }
 
-  const cmykScaled = cmykTotals.map(t => { return t / 40; });
+  const cmykScaled = cmykTotals.map(t => { return t / globalMax; });
   const cmykClippedToPercentage = cmykScaled.map(t => { return 100 * ((t > 1.0) ? 1.0 : t); });
   const rgba = DYES.CMYKtoRGB(cmykClippedToPercentage, 255);
   return rgba;
@@ -124,11 +125,22 @@ DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData, dyeSpace) {
     throw new Error(`Error: mismatch found between size of grid and imageData`);
   }
 
+  // First pass: find global maximum dye amount for adaptive scaling
+  let globalMax = 0;
+  for (var x = 0; x < imageData.width; x++) {
+    for (var y = 0; y < imageData.height; y++) {
+      for (var d = 0; d < this.length; d++) {
+        if (grid[x][y][d] > globalMax) { globalMax = grid[x][y][d]; }
+      }
+    }
+  }
+
+  // Second pass: render with scaling
   const data = imageData.data;
   for (var x = 0; x < imageData.width; x++) {
     for (var y = 0; y < imageData.height; y++) {
       var dyeAmounts = grid[x][y];
-      var rgba = (dyeSpace == 'cmyk') ? this.combineCMYDyesIntoRgbaPixel(dyeAmounts) : this.combineDyesIntoRgbaPixel(dyeAmounts);
+      var rgba = (dyeSpace == 'cmyk') ? this.combineCMYDyesIntoRgbaPixel(dyeAmounts, globalMax) : this.combineDyesIntoRgbaPixel(dyeAmounts, globalMax);
       var dataCellIndex = 4 * (x + (y * imageData.width));
       for (var i = 0; i < 4; i++) {
         data[dataCellIndex + i] = rgba[i];

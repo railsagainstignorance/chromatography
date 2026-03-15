@@ -27,12 +27,14 @@ function calcDyeAndWaterTotalsInWorld(world) {
   DYES.addAmounts(dyeAmountsInPaper, dyeAmountsTotal);
   DYES.addAmounts(dyeAmountsInWater, dyeAmountsTotal);
   DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeAmountsTotal);
+  DYES.addAmounts(world.paperSpotLost.dyeAmounts, dyeAmountsTotal);
   DYES.subtractAmounts(world.waterDropletsAddedToSurface.dyeAmounts, dyeAmountsTotal);
   const dyeAmountTotal = dyeAmountsTotal.reduce((prev, curr) => prev + curr);
   const waterAmountTotal = [
     waterAmountInPaper,
     waterAmountOnSurface,
     world.waterSpotLost.waterAmount,
+    world.paperSpotLost.waterAmount,
     world.waterEvaporationFromPaper.waterAmount,
     world.waterEvaporationFromSurface.waterAmount
   ].reduce((prev, curr) => prev + curr) - world.waterDropletsAddedToSurface.waterAmount;

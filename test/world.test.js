@@ -26,8 +26,10 @@ function totalWaterAndDyes(world) {
 
   // Add lost/evaporated amounts for full accounting
   DYES.addAmounts(world.waterSpotLost.dyeAmounts, dyeTotals);
+  DYES.addAmounts(world.paperSpotLost.dyeAmounts, dyeTotals);
   const waterTotal = waterInPaper + waterOnSurface
     + world.waterSpotLost.waterAmount
+    + world.paperSpotLost.waterAmount
     + world.waterEvaporationFromPaper.waterAmount
     + world.waterEvaporationFromSurface.waterAmount;
 
@@ -173,7 +175,7 @@ describe('conservation', () => {
 });
 
 describe('boundary behaviour', () => {
-  it('edge cells accumulate more dye than centre after many steps (documents rim bug)', () => {
+  it('edge cells do not accumulate more dye than interior cells', () => {
     const world = createSmallWorld(7);
     // Place drop in centre
     const drop = new WaterSpot(50, [100, 100, 100]);
@@ -189,8 +191,7 @@ describe('boundary behaviour', () => {
     const edgeDye = edgeCell.paperSpot.dyeAmounts.reduce((a, b) => a + b, 0);
     const nearEdgeDye = nearEdgeCell.paperSpot.dyeAmounts.reduce((a, b) => a + b, 0);
 
-    // This documents the current behaviour — edge accumulation
-    // When the rim bug is fixed, this test should be updated
-    console.log(`Edge dye: ${edgeDye.toFixed(4)}, near-edge dye: ${nearEdgeDye.toFixed(4)}`);
+    // With absorbing boundaries, edge cells should not accumulate more dye
+    expect(edgeDye).toBeLessThanOrEqual(nearEdgeDye);
   });
 });

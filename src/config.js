@@ -130,10 +130,10 @@ export const DEFAULT_CONFIG = {
     description: 'min/max of r as a proportion of the world.width (with an unbreakable minimum of 2 cells)',
   },
   dropsVRange: {
-    value: [0.1, 10],
+    value: [10, 500],
     range: [0, 10 * ARBITRARY_MAX],
     type: 'range',
-    description: 'min/max of volume as a proportion of world.width',
+    description: 'min/max of total droplet volume (divided among cells in the drop circle)',
   },
   dropsDRange: {
     value: [0.75, 0.75],
