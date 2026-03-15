@@ -135,7 +135,7 @@ export function setupCAWorldExtensions() {
       if (details.hasOwnProperty('value')) {
         let value = details.value;
 
-        if (config != undefined) {
+        if (config != undefined && config.hasOwnProperty(key)) {
           value = config[key];
         }
 
