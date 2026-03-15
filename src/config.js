@@ -27,12 +27,12 @@ export const WORLD_DEFAULT_CONFIG = {
     description: "divide DownhillTipRatio by this factor for the corner nhrs"
   },
   ScaleForFlowToWet: {
-    value: 1,
+    value: 1.5,
     range: [0, 2],
     description: "speed or slow the flow from wet to wet surface"
   },
   ScaleForFlowToDry: {
-    value: 1,
+    value: 1.5,
     range: [0, 2],
     description: "speed or slow the flow from wet to dry surface"
   },
@@ -41,18 +41,23 @@ export const WORLD_DEFAULT_CONFIG = {
     range: [0, 1],
     description: 'modify the water absorption rate across the whole paper'
   },
+  DesorptionRate: {
+    value: 0.3,
+    range: [0, 1],
+    description: 'rate at which excess dye in paper dissolves back into surface water toward Rf equilibrium',
+  },
   PaperCapillaryFactor: {
     value: 1,
     range: [0, 1],
     description: 'modify the capillary flow rate across the whole paper'
   },
   PaperDiffusionFactor: {
-    value: 0.15,
+    value: 0.05,
     range: [0, 1],
     description: 'modify the diffusion flow rate across the whole paper'
   },
   WaterDiffusionFactor: {
-    value: 0.15,
+    value: 0.05,
     range: [0, 1],
     description: 'modify the diffusion flow rate across the whole paper surface'
   },
@@ -77,8 +82,8 @@ export const WORLD_DEFAULT_CONFIG = {
     description: 'cap on water per cell to prevent unbounded accumulation',
   },
   Processes: {
-    value: ['surfaceFlow', 'absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
-    known: ['absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue', 'waterSource'],
+    value: ['absorption', 'desorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+    known: ['absorption', 'desorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue', 'waterSource'],
     description: 'the sequence of physical processes to run in turn on the grid',
   },
   PaperSpotMaxWaterCapacityRange: {
@@ -196,7 +201,7 @@ export const PRESETS = [
       WaterSourceEnabled: true,
       WaterSourceAmountPerCell: 0.01,
       WaterSourceMaxPerCell: 0.5,
-      Processes: ['waterSource', 'surfaceFlow', 'absorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
+      Processes: ['waterSource', 'absorption', 'desorption', 'surfaceFlow', 'capillaryFlow', 'diffusion', 'evaporation', 'sanityCheckValue'],
       dropsNum: 3,
       dropsXRange: [0.3, 0.7],
       dropsYRange: [0.12, 0.18],

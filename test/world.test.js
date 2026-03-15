@@ -251,6 +251,117 @@ describe('waterSource', () => {
   });
 });
 
+describe('capillaryFlow', () => {
+  it('moves dye proportionally with water (no Rf bias)', () => {
+    const world = createSmallWorld(5);
+    // Place equal red and blue dye directly into paper of the centre cell
+    const centreCell = world.grid[2][2].getCellNextValue();
+    centreCell.paperSpot.waterAmount = 0.5;
+    centreCell.paperSpot.dyeAmounts[0] = 10; // red (Rf=0.4)
+    centreCell.paperSpot.dyeAmounts[2] = 10; // blue (Rf=0.9)
+
+    world.stepThroughProcess('capillaryFlow');
+
+    const afterCell = world.grid[2][2].getCellNextValue();
+    // Both dyes should lose the same proportion since Rf is no longer applied
+    const redRemaining = afterCell.paperSpot.dyeAmounts[0];
+    const blueRemaining = afterCell.paperSpot.dyeAmounts[2];
+    expect(redRemaining).toBeCloseTo(blueRemaining, 10);
+  });
+});
+
+describe('desorption', () => {
+  let world;
+
+  beforeEach(() => {
+    world = createSmallWorld(5);
+  });
+
+  it('conserves dye', () => {
+    const cell = world.grid[2][2].getCellNextValue();
+    cell.paperSpot.waterAmount = 0.5;
+    cell.paperSpot.dyeAmounts[0] = 10;
+    cell.waterSpot.waterAmount = 1;
+    cell.waterSpot.dyeAmounts[0] = 0;
+
+    const totalBefore = cell.paperSpot.dyeAmounts[0] + cell.waterSpot.dyeAmounts[0];
+    world.stepThroughProcess('desorption');
+
+    const after = world.grid[2][2].getCellNextValue();
+    const totalAfter = after.paperSpot.dyeAmounts[0] + after.waterSpot.dyeAmounts[0];
+    expect(totalAfter).toBeCloseTo(totalBefore, 10);
+  });
+
+  it('moves dye from paper to surface', () => {
+    const cell = world.grid[2][2].getCellNextValue();
+    cell.paperSpot.waterAmount = 0.5;
+    cell.paperSpot.dyeAmounts[0] = 10;
+    cell.waterSpot.waterAmount = 1;
+    cell.waterSpot.dyeAmounts[0] = 0;
+
+    world.stepThroughProcess('desorption');
+
+    const after = world.grid[2][2].getCellNextValue();
+    expect(after.waterSpot.dyeAmounts[0]).toBeGreaterThan(0);
+    expect(after.paperSpot.dyeAmounts[0]).toBeLessThan(10);
+  });
+
+  it('is a no-op without surface water', () => {
+    const cell = world.grid[2][2].getCellNextValue();
+    cell.paperSpot.waterAmount = 0.5;
+    cell.paperSpot.dyeAmounts[0] = 10;
+    cell.waterSpot.waterAmount = 0;
+
+    world.stepThroughProcess('desorption');
+
+    const after = world.grid[2][2].getCellNextValue();
+    expect(after.paperSpot.dyeAmounts[0]).toBe(10);
+    expect(after.waterSpot.dyeAmounts[0]).toBe(0);
+  });
+
+  it('blue desorbs less than red (higher Rf = more paper affinity)', () => {
+    // Set up two cells with identical dye amounts but different dyes
+    const cellA = world.grid[1][1].getCellNextValue();
+    cellA.paperSpot.waterAmount = 0.5;
+    cellA.paperSpot.dyeAmounts[0] = 10; // red (Rf=0.4)
+    cellA.waterSpot.waterAmount = 1;
+
+    const cellB = world.grid[3][3].getCellNextValue();
+    cellB.paperSpot.waterAmount = 0.5;
+    cellB.paperSpot.dyeAmounts[2] = 10; // blue (Rf=0.9)
+    cellB.waterSpot.waterAmount = 1;
+
+    world.stepThroughProcess('desorption');
+
+    const afterA = world.grid[1][1].getCellNextValue();
+    const afterB = world.grid[3][3].getCellNextValue();
+    // Red (lower Rf) should desorb MORE into surface than blue (higher Rf)
+    expect(afterA.waterSpot.dyeAmounts[0]).toBeGreaterThan(afterB.waterSpot.dyeAmounts[2]);
+  });
+});
+
+describe('diffusion', () => {
+  it('follows Fick\'s law — dye flows from high to low concentration', () => {
+    const world = createSmallWorld(3);
+    // High concentration in centre, zero elsewhere
+    const centreCell = world.grid[1][1].getCellNextValue();
+    centreCell.paperSpot.waterAmount = 0.5;
+    centreCell.paperSpot.dyeAmounts[0] = 10;
+
+    // Give neighbor some water (required for diffusion to act)
+    const nhbrCell = world.grid[1][2].getCellNextValue();
+    nhbrCell.paperSpot.waterAmount = 0.5;
+    nhbrCell.paperSpot.dyeAmounts[0] = 0;
+
+    world.stepThroughProcess('diffusion');
+
+    const afterCentre = world.grid[1][1].getCellNextValue();
+    const afterNhbr = world.grid[1][2].getCellNextValue();
+    expect(afterCentre.paperSpot.dyeAmounts[0]).toBeLessThan(10);
+    expect(afterNhbr.paperSpot.dyeAmounts[0]).toBeGreaterThan(0);
+  });
+});
+
 describe('boundary behaviour', () => {
   it('edge cells do not accumulate more dye than interior cells', () => {
     const world = createSmallWorld(7);

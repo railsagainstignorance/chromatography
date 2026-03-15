@@ -80,6 +80,23 @@ describe('parseUrlParams', () => {
   });
 });
 
+describe('Processes', () => {
+  it('default Processes contains surfaceFlow exactly once', () => {
+    const configs = parseUrlParams('');
+    const sfCount = configs.Processes.filter(p => p === 'surfaceFlow').length;
+    expect(sfCount).toBe(1);
+  });
+
+  it('default Processes includes desorption', () => {
+    const configs = parseUrlParams('');
+    expect(configs.Processes).toContain('desorption');
+  });
+
+  it('known Processes includes desorption', () => {
+    expect(WORLD_DEFAULT_CONFIG.Processes.known).toContain('desorption');
+  });
+});
+
 describe('buildQueryString', () => {
   it('builds a query string from simple params', () => {
     const qs = buildQueryString({ size: 40, record: true });

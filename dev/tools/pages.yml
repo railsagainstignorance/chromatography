@@ -27,6 +27,6 @@ pages:
     description: CMYK color space rendering
 
   water-source:
-    path: /?size=40&WaterSourceEnabled=true&WaterSourceAmountPerCell=0.01&WaterSourceMaxPerCell=0.5&Processes=["waterSource","surfaceFlow","absorption","surfaceFlow","capillaryFlow","diffusion","evaporation","sanityCheckValue"]&dropsNum=3&dropsXRange=[0.3,0.7]&dropsYRange=[0.12,0.18]&dropsVRange=[0.01,0.02]&dropsDRange=[5000,10000]&dropsRRange=[0.01,0.02]&maxIterations=2000
+    path: /?size=40&WaterSourceEnabled=true&WaterSourceAmountPerCell=0.01&WaterSourceMaxPerCell=0.5&Processes=["waterSource","absorption","desorption","surfaceFlow","capillaryFlow","diffusion","evaporation","sanityCheckValue"]&dropsNum=3&dropsXRange=[0.3,0.7]&dropsYRange=[0.12,0.18]&dropsVRange=[0.01,0.02]&dropsDRange=[5000,10000]&dropsRRange=[0.01,0.02]&maxIterations=2000
     description: Water source at top edge with concentrated dye spots below
     timeout: 120000
