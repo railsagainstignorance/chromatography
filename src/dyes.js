@@ -1,3 +1,5 @@
+import { RGB_BYTE_MAX, RGB_CHANNELS, RGBA_CHANNELS, RGBA_BYTES_PER_PIXEL, CMYK_PERCENTAGE_MAX, FULL_OPACITY, WHITE_RGBA } from './constants.js';
+
 export const DYES = [
   {
     name: 'red',
@@ -33,8 +35,6 @@ export const DYES = [
   }
 }
 
-DYES.RGBMaximum = 253;
-
 DYES.newEmptyDyeAmounts = function() {
   return new Array(this.length).fill(0);
 };
@@ -62,11 +62,11 @@ DYES.subtractAmounts = function(from, to) {
 };
 
 DYES.combineDyesIntoRgbaPixel = function(dyeAmounts, globalMax) {
-  if (!globalMax || globalMax <= 0) { return [255, 255, 255, 255]; }
+  if (!globalMax || globalMax <= 0) { return [...WHITE_RGBA]; }
 
-  var rgba01 = new Array(3).fill(0);
+  var rgba01 = new Array(RGB_CHANNELS).fill(0);
   for (var d = 0; d < this.length; d++) {
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < RGB_CHANNELS; i++) {
       rgba01[i] += (dyeAmounts[d] / globalMax) * this[d].RGBPattern[i];
     }
   }
@@ -76,47 +76,47 @@ DYES.combineDyesIntoRgbaPixel = function(dyeAmounts, globalMax) {
     rgba01 = rgba01.map(c => { return c / maxRGB01; });
     maxRGB01 = 1.0;
   }
-  if (maxRGB01 == 0) { return [255, 255, 255, 255]; }
+  if (maxRGB01 == 0) { return [...WHITE_RGBA]; }
 
   // White→color: lerp from white based on intensity
-  var rgba = rgba01.map(c => { return Math.floor((1.0 - maxRGB01 + c) * 255); });
-  rgba.push(255);
+  var rgba = rgba01.map(c => { return Math.floor((1.0 - maxRGB01 + c) * RGB_BYTE_MAX); });
+  rgba.push(FULL_OPACITY);
   return rgba;
 };
 
-DYES.CMYKtoRGB = function(cmyk, a = 255) {
-  var rgb = new Array(4).fill(0);
+DYES.CMYKtoRGB = function(cmyk, a = FULL_OPACITY) {
+  var rgb = new Array(RGBA_CHANNELS).fill(0);
   rgb[3] = a;
 
-  var c = cmyk[0] / 100;
-  var m = cmyk[1] / 100;
-  var y = cmyk[2] / 100;
-  var k = cmyk[3] / 100;
+  var c = cmyk[0] / CMYK_PERCENTAGE_MAX;
+  var m = cmyk[1] / CMYK_PERCENTAGE_MAX;
+  var y = cmyk[2] / CMYK_PERCENTAGE_MAX;
+  var k = cmyk[3] / CMYK_PERCENTAGE_MAX;
 
   rgb[0] = 1 - Math.min(1, c * (1 - k) + k);
   rgb[1] = 1 - Math.min(1, m * (1 - k) + k);
   rgb[2] = 1 - Math.min(1, y * (1 - k) + k);
 
-  rgb[0] = Math.round(rgb[0] * 255);
-  rgb[1] = Math.round(rgb[1] * 255);
-  rgb[2] = Math.round(rgb[2] * 255);
+  rgb[0] = Math.round(rgb[0] * RGB_BYTE_MAX);
+  rgb[1] = Math.round(rgb[1] * RGB_BYTE_MAX);
+  rgb[2] = Math.round(rgb[2] * RGB_BYTE_MAX);
 
   return rgb;
 };
 
 DYES.combineCMYDyesIntoRgbaPixel = function(dyeAmounts, globalMax) {
-  if (!globalMax || globalMax <= 0) { return [255, 255, 255, 255]; }
+  if (!globalMax || globalMax <= 0) { return [...WHITE_RGBA]; }
 
-  const cmykTotals = new Array(4).fill(0);
+  const cmykTotals = new Array(RGBA_CHANNELS).fill(0);
   for (var d = 0; d < this.length; d++) {
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < RGB_CHANNELS; i++) {
       cmykTotals[i] = cmykTotals[i] + (dyeAmounts[d] * this[d].CMYKPattern[i]);
     }
   }
 
   const cmykScaled = cmykTotals.map(t => { return t / globalMax; });
-  const cmykClippedToPercentage = cmykScaled.map(t => { return 100 * ((t > 1.0) ? 1.0 : t); });
-  const rgba = DYES.CMYKtoRGB(cmykClippedToPercentage, 255);
+  const cmykClippedToPercentage = cmykScaled.map(t => { return CMYK_PERCENTAGE_MAX * ((t > 1.0) ? 1.0 : t); });
+  const rgba = DYES.CMYKtoRGB(cmykClippedToPercentage, FULL_OPACITY);
   return rgba;
 };
 
@@ -141,8 +141,8 @@ DYES.writeGridOfDyeAmountsToImageData = function(grid, imageData, dyeSpace) {
     for (var y = 0; y < imageData.height; y++) {
       var dyeAmounts = grid[x][y];
       var rgba = (dyeSpace == 'cmyk') ? this.combineCMYDyesIntoRgbaPixel(dyeAmounts, globalMax) : this.combineDyesIntoRgbaPixel(dyeAmounts, globalMax);
-      var dataCellIndex = 4 * (x + (y * imageData.width));
-      for (var i = 0; i < 4; i++) {
+      var dataCellIndex = RGBA_BYTES_PER_PIXEL * (x + (y * imageData.width));
+      for (var i = 0; i < RGBA_CHANNELS; i++) {
         data[dataCellIndex + i] = rgba[i];
       }
     }

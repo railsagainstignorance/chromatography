@@ -4,6 +4,14 @@ import { setupCAWorldExtensions, createWorldOfBlottingPaperAndDyes } from './wor
 import { displayWorld } from './rendering.js';
 import { randomWithinRange } from './utils.js';
 
+const RECORDING_FRAME_RATE = 15;
+const MIN_ACCEPTABLE_CONSERVATION_DELTA = 0.1;
+const CONSERVATION_DELTA_PRECISION = 5;
+const FRAME_RATE_PRECISION = 2;
+const PIXEL_RATE_PRECISION = 0;
+const WATER_AMOUNT_PRECISION = 1;
+const PROCESS_TIMING_PRECISION = 0;
+
 setupCAWorldExtensions();
 
 function calcDyeAndWaterTotalsInWorld(world) {
@@ -62,8 +70,8 @@ function calcDyeAndWaterTotalDelta(totalsList, relative = true) {
   const last = totalsList[totalsList.length - 1];
   return {
     stepCountDelta: last.stepCount - first.stepCount + ((relative) ? 0 : 1),
-    waterAmountTotal: (last.waterAmountTotal - first.waterAmountTotal).toFixed(5),
-    dyeAmountTotal: (last.dyeAmountTotal - first.dyeAmountTotal).toFixed(5),
+    waterAmountTotal: (last.waterAmountTotal - first.waterAmountTotal).toFixed(CONSERVATION_DELTA_PRECISION),
+    dyeAmountTotal: (last.dyeAmountTotal - first.dyeAmountTotal).toFixed(CONSERVATION_DELTA_PRECISION),
   };
 }
 
@@ -88,7 +96,7 @@ function calcAndDisplayTotals(world, iterationDetails, relative = true) {
       iterationDetails.startBatchRunTimeMillis = nowMillis;
     }
   }
-  console.log(`iteration=${iterationDetails.numIterations}, frames/s=${frameRate.toFixed(2)}, pixels/s=${pixelRate.toFixed(0)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(1)} (on surface: ${totals.waterAmountOnSurface.toFixed(1)})`);
+  console.log(`iteration=${iterationDetails.numIterations}, frames/s=${frameRate.toFixed(FRAME_RATE_PRECISION)}, pixels/s=${pixelRate.toFixed(PIXEL_RATE_PRECISION)}, waterAmountRemaining=${totals.waterAmountInPaperOrOnSurface.toFixed(WATER_AMOUNT_PRECISION)} (on surface: ${totals.waterAmountOnSurface.toFixed(WATER_AMOUNT_PRECISION)})`);
 
   {
     const names = Object.keys(world.processTimings);
@@ -97,7 +105,7 @@ function calcAndDisplayTotals(world, iterationDetails, relative = true) {
       const timingsList = world.processTimings[name];
       const lastFew = timingsList.slice(-iterationDetails.batchSize);
       const avg = lastFew.reduce((prev, curr) => prev + curr) / lastFew.length;
-      return `${name}: ${avg.toFixed(0)}`;
+      return `${name}: ${avg.toFixed(PROCESS_TIMING_PRECISION)}`;
     });
 
     console.log(`process timings: ${processTimings.join(', ')}`);
@@ -134,8 +142,7 @@ function startRecording(canvas, codeVersion) {
     a.click();
     window.URL.revokeObjectURL(url);
   }
-  const frameRate = 15;
-  const stream = canvas.captureStream(frameRate);
+  const stream = canvas.captureStream(RECORDING_FRAME_RATE);
   const mediaRecorder = new MediaRecorder(stream, options);
   mediaRecorder.ondataavailable = download;
   mediaRecorder.start();
@@ -220,7 +227,7 @@ export function createPaper(canvas, queryString) {
       batchSize: configs['batchSize'],
       startOverallRunTimeMillis: Date.now(),
       startBatchRunTimeMillis: Date.now(),
-      minAcceptableDelta: 0.1,
+      minAcceptableDelta: MIN_ACCEPTABLE_CONSERVATION_DELTA,
       totalsList: [calcDyeAndWaterTotalsInWorld(world)],
     };
 

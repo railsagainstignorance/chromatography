@@ -1,4 +1,5 @@
 import { DYES } from './dyes.js';
+import { RGB_BYTE_MAX, RGBA_CHANNELS, RGBA_BYTES_PER_PIXEL, FULL_OPACITY } from './constants.js';
 
 export function writeWorldWaterAmountsToImageData(world, imageData) {
   var worldGrid = world.grid;
@@ -10,13 +11,13 @@ export function writeWorldWaterAmountsToImageData(world, imageData) {
     for (var y = 0; y < imageData.height; y++) {
       const cellValue = worldGrid[y][x].getCellValue();
       var rgba = [
-        (cellValue.waterSpot.waterAmount) * 255,
-        (cellValue.paperSpot.waterAmount) * 255,
+        (cellValue.waterSpot.waterAmount) * RGB_BYTE_MAX,
+        (cellValue.paperSpot.waterAmount) * RGB_BYTE_MAX,
         0,
-        255
+        FULL_OPACITY
       ];
-      var dataCellIndex = 4 * (x + (y * imageData.width));
-      for (var i = 0; i < 4; i++) {
+      var dataCellIndex = RGBA_BYTES_PER_PIXEL * (x + (y * imageData.width));
+      for (var i = 0; i < RGBA_CHANNELS; i++) {
         data[dataCellIndex + i] = rgba[i];
       }
     }

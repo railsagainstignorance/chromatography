@@ -4,6 +4,9 @@ import { CellSpot } from './cell-spot.js';
 import { WORLD_DEFAULT_CONFIG } from './config.js';
 import { randomWithinRange } from './utils.js';
 
+const MOORE_NEIGHBORHOOD_SIZE = 8;
+const CAPILLARY_EQUILIBRIUM_DIVISOR = 2;
+
 // CAWorld and CellAutoCell are expected as globals (loaded via script tag in browser,
 // or set up in test/setup.js for vitest).
 
@@ -86,7 +89,7 @@ export function setupCAWorldExtensions() {
     this.processTimings[name].push(timing);
   };
 
-  var neighborhood = [null, null, null, null, null, null, null, null];
+  var neighborhood = new Array(MOORE_NEIGHBORHOOD_SIZE).fill(null);
 
   CAWorld.prototype.stepThroughProcess = function(processName) {
     const skipBecauseSurfaceDry = (
@@ -303,7 +306,7 @@ export function createWorldOfBlottingPaperAndDyes(width, height, config = {}) {
         let nhbrValuePaperSpot = nhbr ? nhbr.value.paperSpot : null;
         let nhbrWaterAmount = nhbrValuePaperSpot ? nhbrValuePaperSpot.waterAmount : 0;
         let deltaWaterAmount = (thisValuePaperSpot.waterAmount - nhbrWaterAmount);
-        let deltaWaterAmountScaled = deltaWaterAmount * direction.weight / (2 * world.fullTotalWeight);
+        let deltaWaterAmountScaled = deltaWaterAmount * direction.weight / (CAPILLARY_EQUILIBRIUM_DIVISOR * world.fullTotalWeight);
         if (remainingPaperWaterCapacity > 0 && deltaWaterAmountScaled < 0 && nhbrValuePaperSpot) {
           let waterFlowAmount = Math.min((-deltaWaterAmountScaled), remainingPaperWaterCapacity) * world.PaperCapillaryFactor;
           thisNextPaperSpot.waterAmount = thisNextPaperSpot.waterAmount + waterFlowAmount;
