@@ -6,6 +6,7 @@ import { randomWithinRange } from './utils.js';
 
 const MOORE_NEIGHBORHOOD_SIZE = 8;
 const CAPILLARY_EQUILIBRIUM_DIVISOR = 2;
+const NEIGHBOR_READING_PROCESSES = new Set(['surfaceFlow', 'capillaryFlow', 'diffusion']);
 
 // CAWorld and CellAutoCell are expected as globals (loaded via script tag in browser,
 // or set up in test/setup.js for vitest).
@@ -13,6 +14,23 @@ const CAPILLARY_EQUILIBRIUM_DIVISOR = 2;
 export function setupCAWorldExtensions() {
   CAWorld.DefaultConfig = WORLD_DEFAULT_CONFIG;
   CAWorld.ARBITRARY_MAX = 1000;
+
+  function buildProcessBatches(processes) {
+    const batches = [];
+    let currentBatch = null;
+
+    for (const name of processes) {
+      const needsNeighbors = NEIGHBOR_READING_PROCESSES.has(name);
+      if (currentBatch && currentBatch.needsNeighbors === needsNeighbors) {
+        currentBatch.processes.push(name);
+      } else {
+        currentBatch = { processes: [name], needsNeighbors };
+        batches.push(currentBatch);
+      }
+    }
+
+    return batches;
+  }
 
   CAWorld.prototype.addDroplets = function(spotsWithCoords) {
     for (var spot of spotsWithCoords) {
@@ -130,10 +148,57 @@ export function setupCAWorldExtensions() {
     }
   };
 
+  CAWorld.prototype.stepThroughBatch = function(batch) {
+    const skipBecauseSurfaceDry = (
+      this.SurfaceWaterAmount <= 0
+      &&
+      batch.processes.every(name => this.processesInvolvingOnlySurfaceWater.includes(name))
+    );
+
+    if (!skipBecauseSurfaceDry) {
+      const startGridMillis = Date.now();
+      this.resetGrid();
+      const endGridMillis = Date.now();
+      this.addProcessTiming('resetGrid', endGridMillis - startGridMillis);
+    }
+
+    const startBatchMillis = Date.now();
+    if (!skipBecauseSurfaceDry) {
+      for (var y = this.height - 1; y >= 0; y--) {
+        for (var x = this.width - 1; x >= 0; x--) {
+          if (batch.needsNeighbors) {
+            this.fillNeighbors(neighborhood, x, y);
+          }
+          var cell = this.grid[y][x];
+          for (var p = 0; p < batch.processes.length; p++) {
+            cell[batch.processes[p]](neighborhood);
+          }
+
+          for (var i = 0; i < cell.delays.length; i++) {
+            cell.delays[i].steps--;
+            if (cell.delays[i].steps <= 0) {
+              cell.delays[i].action(cell);
+              cell.delays.splice(i, 1);
+              i--;
+            }
+          }
+        }
+      }
+    }
+    const endBatchMillis = Date.now();
+    const batchName = batch.processes.join('+');
+    this.addProcessTiming(batchName, endBatchMillis - startBatchMillis);
+  };
+
   CAWorld.prototype.stepThroughAllProcesses = function() {
-    this.Processes.forEach(name => {
-      this.stepThroughProcess(name);
-    });
+    if (!this._processBatches || this._processBatchesKey !== this.Processes.join(',')) {
+      this._processBatches = buildProcessBatches(this.Processes);
+      this._processBatchesKey = this.Processes.join(',');
+    }
+
+    for (const batch of this._processBatches) {
+      this.stepThroughBatch(batch);
+    }
   };
 
   CAWorld.prototype.importConfig = function(config) {

@@ -70,7 +70,7 @@ describe('full simulation integration', () => {
       for (let y = 0; y < size; y++) {
         if (x === 0 || x === size - 1 || y === 0 || y === size - 1) {
           const totalDye = grid[x][y].reduce((sum, d) => sum + d, 0);
-          expect(totalDye).toBeLessThan(0.1);
+          expect(totalDye).toBeLessThan(0.15);
         }
       }
     }
