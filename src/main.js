@@ -212,6 +212,10 @@ export function createPaper(canvas, queryString) {
   if (configs['size'] && configs['size'] > 1) {
     canvas.setAttribute('height', configs['size']);
     canvas.setAttribute('width', configs['size']);
+
+    const maxDisplayPx = configs['size'] * configs['maxCellSize'];
+    canvas.style.width = `min(90vh, ${maxDisplayPx}px)`;
+    canvas.style.height = `min(90vh, ${maxDisplayPx}px)`;
   }
 
   if (configs.record) { startRecording(canvas, '3-0'); }

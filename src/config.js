@@ -181,6 +181,11 @@ export const DEFAULT_CONFIG = {
     known: ['cmyk', 'rgb'],
     description: 'which colour space to consider when combining the dyes',
   },
+  maxCellSize: {
+    value: 10,
+    range: [1, ARBITRARY_MAX],
+    description: 'maximum screen pixels per grid cell, caps canvas display size to avoid oversized blobs',
+  },
 };
 
 export const PRESETS = [
