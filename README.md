@@ -152,3 +152,81 @@ Thoughts on imminent CA coding:
    * regenerate an image from the resultant dye amounts
    * gasp in wonder at the colourful splodges
    * twiddle the 1000s of params and try again
+
+## Working on the code
+
+In-browser physics simulation of chromatography (dyes flowing through wet paper via water transport), using cellular automata on HTML5 Canvas.
+
+### Commands
+
+```bash
+npm start         # serve locally (port from .env, default 8000)
+npm run start:test # serve on test port (from .env, default 8001)
+npm test          # run all tests (vitest)
+npm run test:watch # run tests in watch mode
+npm run lint      # eslint src/
+```
+
+To run in a browser: `npm start`, then open `http://localhost:$PORT/?size=40`. ES modules require a server, so `file://` won't work. Ports are configured in `.env` (`PORT`, `PORT_TEST`), and `.env.example` is the template.
+
+### Architecture
+
+Source files in `src/`:
+- `constants.js`: shared RGB/RGBA/CMYK constants
+- `dyes.js`: DYES array (Red/Green/Blue), dye amount operations, color conversion (RGB and CMYK)
+- `paper-spot.js`: PaperSpot class (absorbed water in paper)
+- `water-spot.js`: WaterSpot class (surface water carrying dyes)
+- `cell-spot.js`: CellSpot class (combines PaperSpot + WaterSpot per grid cell)
+- `world.js`: CAWorld extensions, physics processes (absorption, surfaceFlow, capillaryFlow, diffusion, evaporation), world creation
+- `config.js`: WORLD_DEFAULT_CONFIG, DEFAULT_CONFIG, parseUrlParams
+- `rendering.js`: grid-to-canvas rendering pipeline
+- `utils.js`: randomWithinRange, getMaxOfArray
+- `main.js`: entry point, wires everything together, exposes `createPaper`
+
+`assets/cellauto.min.js` provides `CAWorld` and `CellAutoCell` as globals, loaded via a script tag. For tests, `test/setup.js` loads them into globalThis.
+
+`index.html` is a thin HTML shell that loads `cellauto.min.js` and imports `src/main.js` as an ES module.
+
+### URL configuration
+
+- `size`: grid dimensions (default: 100)
+- `maxIterations`, `displayEveryN`, `batchSize`: simulation control
+- `dropsNum`, `dropsXRange`, `dropsYRange`, `dropsRRange`, `dropsVRange`, `dropsDRange`: droplet placement
+- `spotType`: `cellSpot`, `waterSpot`, `paperSpot`
+- `viewType`: `dyeAmounts` or `waterAmounts`
+- `dyeSpace`: `cmyk` or `rgb`
+- Physics params: `EvaporationFromPaperRate`, `PaperAbsorptionFactor`, `PaperCapillaryFactor`, etc.
+- `json`: pass full config as JSON
+
+### Screenshot tool
+
+Capture simulation screenshots for visual inspection.
+
+```bash
+npm run screenshot -- --list          # list registered pages
+npm run screenshot -- default         # capture after simulation completes
+npm run screenshot -- default --wait 3000  # capture mid-simulation at 3s
+npm run screenshot -- --all           # capture all pages
+npm run screenshot -- default --selector "canvas"  # capture just the canvas
+npm run screenshot -- default --width 1200 --height 1200  # custom viewport
+```
+
+Requires `npm run start:test` running in the background. It uses Playwright (Chromium), and first-time setup is `npx playwright install chromium`.
+
+There are two capture modes:
+1. **Completion detection** (default): waits for `console.log('iterations ended.')`, then captures
+2. **Fixed wait** (`--wait N`): captures after N milliseconds
+
+The page registry is `dev/tools/pages.yml`. Output goes to `agent_work/screenshots/` (gitignored, timestamped PNGs).
+
+### Engineering principles
+
+- **No magic numbers:** all constants (ports, thresholds, scaling factors, etc.) must be defined in config files or named constants, never hardcoded in code or docs.
+
+### Key concepts
+
+- Water exists in two states per cell: surface (WaterSpot) and absorbed in paper (PaperSpot)
+- Each water state carries its own dye amounts
+- Physics processes transfer water and dyes between states and between neighboring cells
+- Conservation checks log warnings if water or dye totals change unexpectedly
+- Physics processes are registered as cell methods via cellauto's `registerCellType`, referencing the `world` instance via closure
